@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { resolveTheme, type ResolvedTheme } from "@/lib/themes/resolve";
+import { type ResolvedTheme, resolveTheme } from "@/lib/themes/resolve";
 import type { ThemeMode, ThemeOverrides } from "@/themes/contract";
 import { getTheme, voidTheme } from "@/themes/registry";
 

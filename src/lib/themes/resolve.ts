@@ -28,7 +28,8 @@ export function resolveTheme(
     ? mode
     : theme.meta.modes[0];
   const tokens = theme.tokens[effectiveMode];
-  if (!tokens) throw new Error(`主题 ${theme.meta.id} 缺少 ${effectiveMode} 模式令牌`);
+  if (!tokens)
+    throw new Error(`主题 ${theme.meta.id} 缺少 ${effectiveMode} 模式令牌`);
 
   const speed = overrides.motionSpeed ?? 1;
   const scale = (ms: number) => Math.round(ms * speed);

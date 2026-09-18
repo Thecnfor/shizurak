@@ -17,7 +17,8 @@ describe("resolveTheme", () => {
   });
   it("effectsIntensity 覆盖主题默认", () => {
     expect(
-      resolveTheme(voidTheme, "dark", { effectsIntensity: 0.2 }).effects.intensity,
+      resolveTheme(voidTheme, "dark", { effectsIntensity: 0.2 }).effects
+        .intensity,
     ).toBe(0.2);
     expect(resolveTheme(voidTheme, "dark").effects.intensity).toBe(0.7);
   });

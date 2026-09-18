@@ -15,9 +15,9 @@ describe("theme-store", () => {
   it("setTheme 切换并持久化", () => {
     useThemeStore.getState().setTheme("lumen");
     expect(useThemeStore.getState().resolved.meta.id).toBe("lumen");
-    expect(JSON.parse(localStorage.getItem("shizurak:theme") ?? "{}").themeId).toBe(
-      "lumen",
-    );
+    expect(
+      JSON.parse(localStorage.getItem("shizurak:theme") ?? "{}").themeId,
+    ).toBe("lumen");
   });
 
   it("setOverride 触发 resolved 重算并持久化", () => {
