@@ -40,3 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .codegraph/
+
+# M0
+src/app/theme-vars.generated.css
+playwright-report/
+test-results/
