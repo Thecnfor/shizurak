@@ -1,7 +1,12 @@
 import { contrastRatio } from "../src/lib/themes/contrast";
 import { themeList } from "../src/themes/registry";
 
-const MIN = { ink: 7, inkSecondary: 4.5, inkMuted: 4.5, accentInk: 4.5 } as const;
+const MIN = {
+  ink: 7,
+  inkSecondary: 4.5,
+  inkMuted: 4.5,
+  accentInk: 4.5,
+} as const;
 let failures = 0;
 
 for (const theme of themeList) {

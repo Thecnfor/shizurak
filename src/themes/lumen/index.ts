@@ -7,12 +7,22 @@ const scale: ThemeTokens["typography"]["scale"] = {
     tracking: "-0.03em",
     weight: 600,
   },
-  h1: { size: "clamp(2rem, 4vw, 3rem)", lineHeight: "1.15", tracking: "-0.03em", weight: 600 },
+  h1: {
+    size: "clamp(2rem, 4vw, 3rem)",
+    lineHeight: "1.15",
+    tracking: "-0.03em",
+    weight: 600,
+  },
   h2: { size: "1.75rem", lineHeight: "1.3", tracking: "-0.02em", weight: 600 },
   h3: { size: "1.25rem", lineHeight: "1.4", tracking: "-0.01em", weight: 600 },
   body: { size: "1.0625rem", lineHeight: "1.6", tracking: "0", weight: 400 },
   small: { size: "0.875rem", lineHeight: "1.55", tracking: "0", weight: 400 },
-  micro: { size: "0.75rem", lineHeight: "1.5", tracking: "0.05em", weight: 500 },
+  micro: {
+    size: "0.75rem",
+    lineHeight: "1.5",
+    tracking: "0.05em",
+    weight: 500,
+  },
 };
 
 const fonts: ThemeTokens["typography"] = {
@@ -26,8 +36,18 @@ function lumenTokens(c: ThemeTokens["color"]): ThemeTokens {
   return {
     color: c,
     typography: fonts,
-    space: { unit: 4, containerMax: "72rem", gutter: "1.5rem", sectionY: "8rem" },
-    shape: { radiusSm: "8px", radiusMd: "12px", radiusLg: "18px", borderWidth: "1px" },
+    space: {
+      unit: 4,
+      containerMax: "72rem",
+      gutter: "1.5rem",
+      sectionY: "8rem",
+    },
+    shape: {
+      radiusSm: "8px",
+      radiusMd: "12px",
+      radiusLg: "18px",
+      borderWidth: "1px",
+    },
     elevation: {
       shadowSm: "0 1px 2px rgba(0, 0, 0, 0.04)",
       shadowMd: "0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06)",
@@ -97,10 +117,19 @@ export const lumenTheme: Theme = {
     },
     duration: { micro: 100, ui: 220, section: 400, scene: 600 },
     gsap: { ease: "power2.out" },
-    spring: { ui: { stiffness: 400, damping: 40 }, layout: { stiffness: 420, damping: 42 } },
+    spring: {
+      ui: { stiffness: 400, damping: 40 },
+      layout: { stiffness: 420, damping: 42 },
+    },
     scrollIntensity: 0.15,
   },
-  effects: { background: "none", overlays: [], cursor: "default", hud: false, intensity: 0 },
+  effects: {
+    background: "none",
+    overlays: [],
+    cursor: "default",
+    hud: false,
+    intensity: 0,
+  },
   genui: {
     catalogVariant: "clean",
     openuiVariant: "clean",

@@ -46,10 +46,24 @@ export interface ThemeTokens {
       ThemeTypographyLevel
     >;
   };
-  space: { unit: number; containerMax: string; gutter: string; sectionY: string };
-  shape: { radiusSm: string; radiusMd: string; radiusLg: string; borderWidth: string };
+  space: {
+    unit: number;
+    containerMax: string;
+    gutter: string;
+    sectionY: string;
+  };
+  shape: {
+    radiusSm: string;
+    radiusMd: string;
+    radiusLg: string;
+    borderWidth: string;
+  };
   elevation: { shadowSm: string; shadowMd: string; glow: string };
-  texture: { noiseOpacity: number; gridOpacity: number; scanlineOpacity: number };
+  texture: {
+    noiseOpacity: number;
+    gridOpacity: number;
+    scanlineOpacity: number;
+  };
 }
 
 export interface ThemeMotion {
