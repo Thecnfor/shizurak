@@ -62,7 +62,7 @@ export function CommandMenu({
         onOpenChange={setOpen}
         label={labels.placeholder}
         overlayClassName="fixed inset-0 z-50 bg-black/40"
-        contentClassName="mx-auto mt-[20vh] w-[min(92vw,34rem)] rounded-md border border-border bg-bg-elevated shadow-[var(--shadow-md)]"
+        contentClassName="fixed left-1/2 top-[20vh] z-50 w-[min(92vw,34rem)] -translate-x-1/2 rounded-md border border-border bg-bg-elevated shadow-[var(--shadow-md)]"
       >
         <Command.Input
           placeholder={labels.placeholder}
