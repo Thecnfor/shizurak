@@ -65,7 +65,8 @@ vault 内 blog/ 文件夹            rak-core /home/xrak/wiki（明文副本）
 
 | 事项 | 约定 | 说明 |
 |------|------|------|
-| **middleware → proxy** | 使用 `src/proxy.ts`（如确需）；**认证不用 proxy** | 本版本官方立场：proxy 是最后手段。鉴权走 RSC/layout 层 `auth.api.getSession()`（见 §8） |
+| **middleware → proxy** | `src/proxy.ts` **仅用于语言协商重定向**（官方指南标准用法，CDN 可优化）；**认证不用 proxy** | 本版本官方立场：proxy 是最后手段；鉴权走 RSC/layout 层 `auth.api.getSession()`（见 §8） |
+| **i18n 预适配** | `app/[lang]/` 根布局 + `proxy` 语言协商 + `next/root-params` 字典模式 | 官方指南标准模式（§6.4）；`use cache` 缓存键自动包含 root params |
 | **Cache Components** | `next.config.ts` 设 `cacheComponents: true` | 统一开启 PPR + `use cache` + dynamicIO；`experimental.ppr` 已移除 |
 | **`use cache`** | 数据读取函数一律 `'use cache'` + `cacheLife()` + `cacheTag()` | 缓存键 = buildID + 函数签名 + 序列化参数；参数与返回值必须可序列化（无类实例/函数） |
 | **`revalidateTag`** | 发布/更新内容时精确失效 | 标签规范：`post:<slug>` · `posts` · `materials` · `site-stats` |
@@ -91,36 +92,37 @@ shizurak/
 │   └── theme-check.ts             # 主题契约校验（CI）
 ├── src/
 │   ├── app/
-│   │   ├── (site)/                # 公开站点（共享站点布局）
-│   │   │   ├── layout.tsx         # 站点壳：导航 + Agent Dock + 特效层挂载点
-│   │   │   ├── page.tsx           # 首页（发射序列）
-│   │   │   ├── posts/
-│   │   │   │   ├── page.tsx       # 文章列表
-│   │   │   │   └── [slug]/page.tsx
-│   │   │   ├── projects/page.tsx
-│   │   │   ├── about/page.tsx
-│   │   │   ├── lab/page.tsx       # GenUI playground
-│   │   │   └── search/page.tsx
-│   │   ├── (admin)/
-│   │   │   └── admin/
-│   │   │       ├── layout.tsx     # 鉴权 + 管理台壳（force-dynamic）
-│   │   │       ├── page.tsx       # 仪表盘
-│   │   │       ├── posts/         # 文章管理 + 编辑器
-│   │   │       ├── materials/     # 素材库
-│   │   │       └── agent/         # 作者侧 agent 工作台
-│   │   ├── api/
+│   │   ├── [lang]/                # ← 根布局所在（i18n 预适配：全站页面嵌套语言段，§6.4）
+│   │   │   ├── layout.tsx         # 根布局：<html lang={lang}> + generateStaticParams + 字体 + providers
+│   │   │   ├── dictionaries/      # zh.json · en.json · dictionaries.ts（getDictionary + next/root-params）
+│   │   │   ├── (site)/            # 公开站点（共享站点布局）
+│   │   │   │   ├── layout.tsx     # 站点壳：导航 + Agent Dock + 特效层挂载点
+│   │   │   │   ├── page.tsx       # 首页（发射序列）
+│   │   │   │   ├── posts/
+│   │   │   │   │   ├── page.tsx   # 文章列表
+│   │   │   │   │   └── [slug]/page.tsx
+│   │   │   │   ├── projects/page.tsx
+│   │   │   │   ├── about/page.tsx
+│   │   │   │   ├── lab/page.tsx   # GenUI playground（含 /lab/s/[id] 分享页）
+│   │   │   │   └── search/page.tsx
+│   │   │   ├── (admin)/admin/     # 管理台（zh-only；/en/admin → 重定向 /zh/admin）
+│   │   │   │   ├── layout.tsx     # 鉴权 + 管理台壳（force-dynamic）
+│   │   │   │   ├── page.tsx       # 仪表盘
+│   │   │   │   ├── posts/         # 文章管理 + 编辑器
+│   │   │   │   ├── materials/     # 素材库
+│   │   │   │   └── agent/         # 作者侧 agent 工作台
+│   │   │   ├── rss.xml/route.ts   # 分语言 RSS
+│   │   │   └── opengraph-image.tsx # 默认 OG 模板（按语言渲染）
+│   │   ├── api/                   # 语言无关 Route Handlers
 │   │   │   ├── auth/[...all]/route.ts    # better-auth handler
-│   │   │   ├── chat/route.ts             # 访客 agent 流式端点
+│   │   │   ├── chat/route.ts             # 访客 agent 流式端点（locale 随请求体传入）
 │   │   │   ├── genui/specs/route.ts      # GenUI spec 持久化/分享
 │   │   │   ├── ingest/route.ts           # 素材摄取（token 鉴权）
 │   │   │   ├── events/route.ts           # 埋点收集（beacon）
-│   │   │   ├── search/route.ts           # 搜索（FTS/语义）
+│   │   │   ├── search/route.ts           # 搜索（FTS/语义；locale 为查询参数）
 │   │   │   └── admin/agent/route.ts      # 作者侧 agent 流式端点
-│   │   ├── rss.xml/route.ts
-│   │   ├── sitemap.ts
+│   │   ├── sitemap.ts             # 双语言 + hreflang
 │   │   ├── robots.ts
-│   │   ├── opengraph-image.tsx    # 默认 OG 模板
-│   │   ├── layout.tsx             # 根布局：字体 + ThemeProvider + KernelProvider
 │   │   └── globals.css
 │   ├── kernel/                    # ── 后端内核（Cordis，同构 vendor）──
 │   │   ├── vendor/                # Cordis 4.0（Koishi 内核，MIT，自 cross-dashboard 复用）
@@ -167,7 +169,7 @@ shizurak/
 │   │   └── admin/                 # 编辑器 / diff 审核 / 素材列表...
 │   ├── themes/                    # void/ · lumen/ · reserved/ · contract.ts · registry.ts
 │   ├── stores/                    # zustand：theme-store / ui-shell-store / agent-store
-│   └── proxy.ts                   # （预留：仅静态重定向等最后手段；当前无）
+│   └── proxy.ts                   # 语言协商重定向（Accept-Language → /{locale}/…；官方指南标准用法）
 ├── next.config.ts                 # cacheComponents: true · reactCompiler: true
 └── package.json
 ```
@@ -195,8 +197,8 @@ export function getKernel(): Promise<Context>   // async：await 插件 fiber �
 
 | 插件 | 提供 Service | 职责 | 关键依赖 |
 |------|--------------|------|----------|
-| `model-adapter` | `ai.models` | 模型注册表：chat / embedding / title 模型；经 AI SDK v7 `createOpenAICompatible` 指向 **LiteLLM 网关**；暴露 token 计量回调 | env: `LITELLM_BASE_URL` / `LITELLM_KEY`（虚拟 key + 预算） |
-| `tool-registry` | `ai.tools` | 领域工具注册（含权限级别 L0/L1/L2 元数据）；MCP 客户端（Later：blog-as-MCP 反向暴露）；工具执行统一入口（审计 + 计量） | db queries · search |
+| `model-adapter` | `ai.models` | 模型注册表：chat / embedding / title 模型；经 AI SDK v7 `createOpenAICompatible` 指向 **LiteLLM 网关**；**线程级 prompt caching**（`promptCacheKey = threadId`，system+tools 前缀复用）；reasoning parts 透传（思考可视化）；暴露 token 计量回调 | env: `LITELLM_BASE_URL` / `LITELLM_KEY`（虚拟 key + 预算） |
+| `tool-registry` | `ai.tools` | 领域工具注册（含权限级别 L0/L1/L2 元数据）；**官方 MCP 客户端 `createMCPClient`**（`@ai-sdk/mcp`：Streamable HTTP/SSE/stdio + OAuth + 会话重连；Later：blog-as-MCP 反向暴露）；工具执行统一入口（审计 + 计量） | db queries · search · @ai-sdk/mcp |
 | `mastra-engine` | `workflows` | Mastra 工作流注册与执行：`content-pipeline`（素材→草稿）· `ingest-pipeline`（摄取清洗）· `index-pipeline`（嵌入索引）· `translate-pipeline`（i18n 预留） | Mastra · model-adapter |
 | `content-agent` | `content` | 作者侧能力：`materialToDraft()` · `suggestReplies(comments)` · `summarize()` · `seoMeta()` · 维护任务 | workflows · ai.models |
 | `spec-store` | `specs` | GenUI spec 持久化与分享（`genui_specs` 表）：`save()` / `load(id)` / `share(spec)` | db |
@@ -249,24 +251,31 @@ export function getKernel(): Promise<Context>   // async：await 插件 fiber �
 浏览器                          服务端（/api/chat route handler）
 ──────                          ────────────────────────────────
 useChat (DefaultChatTransport)
-  │ POST { messages, threadId, pageContext, theme }
+  │ POST { messages, threadId, pageContext, theme, locale }
   ├─────────────────────────────▶ 1. Redis 限流（令牌桶：IP 哈希 + 全局）
                                  2. threads.append(user message)
-                                 3. kernel: ai.tools 组装（L0/L1/L2 元数据）
-                                 4. streamText({
-                                      model: ai.models.chat(),
-                                      system: buildSystemPrompt(pageContext, catalog),
-                                      tools, toolApproval,          ← v7：审批在调用点
-                                      stopWhen: stepCountIs(12)     ← 成本闸：MAX_AGENT_STEPS
-                                    })
-                                 5. toUIMessageStreamResponse() ──▶ SSE
+                                 3. kernel: ai.tools 组装（领域工具 + MCP 联邦工具）
+                                 4. ToolLoopAgent（AI SDK v7 官方 Agent 抽象，按角色单例缓存）：
+                                      model: ai.models.chat()
+                                      instructions: buildSystemPrompt(pageContext, catalog)
+                                      tools: ai.tools
+                                      toolApproval: L2 工具 → 'user-approval'   ← §5.4
+                                      stopWhen: isStepCount(12)   ← 成本闸（默认 20，收紧 12）
+                                      callOptionsSchema: { threadId }
+                                      prepareCall: → providerOptions.promptCacheKey = threadId
+                                        （同线程 system+tools 前缀缓存命中，成本再降一档）
+                                 5. agent.stream({ messages, options: { threadId } })
+                                      .toUIMessageStreamResponse() ──▶ SSE
   ◀──────────────────────────────┘
   ├─ 文本流 → 消息气泡（主题化流式显现）
+  ├─ reasoning 流 → 思考可视化（void: 遥测轮播 / lumen: 三点脉冲）——真实 reasoning parts
   ├─ tool call: L0/L1 → 前端内核直接执行（ui-actions）
   │              L2 → 确认卡（pendingActions）→ 用户批准 → 执行一次
   ├─ tool: generateUI → GenUI 管线（§5.2）
   └─ 完成 → threads.append(assistant) + token 计量上报（OTel）
 ```
+
+**安全默认**（v7 `allowSystemInMessages` 默认关闭——system 消息注入被拒）：page-context / 主题 / locale 等动态上下文一律以 **user/context part** 注入，绝不拼进 system 提示——防提示注入的第一道结构防线。
 
 **限流与成本闸**（公开 agent 的安全底线，三重）：
 1. **Redis 令牌桶**：单 IP 10 req/min、30 req/h；全局 500 req/h（`blog:` 前缀）
@@ -331,7 +340,7 @@ Renderer + StateProvider   Renderer（渐进解析）
 |:----:|------|----------|---------|
 | L0 | 只读/建议 | 自动执行 | 默认（无 approval） |
 | L1 | 本地可逆（导航/筛选/主题/生成 UI） | 自动执行到「本地状态」 | 默认（前端 ui-actions 保证可逆） |
-| L2 | 对外/不可逆（订阅/发消息/发布） | **挂起 → 确认卡 → 批准才执行一次** | `toolApproval: { subscribeUpdates: async () => 'user-approval' }` |
+| L2 | 对外/不可逆（订阅/发消息/发布） | **挂起 → 确认卡 → 批准才执行一次** | `toolApproval: { subscribeUpdates: 'user-approval' }`（v7 配置式；也支持策略函数动态判定） |
 
 红线：**访客侧 agent 永远没有 L2 以上的能力**（无 DB 写、无发布、无删除）；作者侧 agent 的发布动作同样走确认。
 
@@ -388,12 +397,20 @@ rak-core /home/xrak/wiki/blog/          本机或 rak-core 定时运行 scripts/
 - 摄取内容视为**不可信输入**（作者随手写的含隐私内容）——ingest-pipeline 强制隐私扫描（银行卡号/密码形态/`我.md` 类引用），命中即隔离待人工处理
 - 触发：cron（每 30min）或手动 `pnpm ingest`；rak-core 与博客同集群时优先服务器侧运行
 
-### 6.4 i18n 预留（中文优先）
+### 6.4 i18n 预适配（Next.js 官方最佳实践）
 
-- 数据层：`posts.locale` + 唯一约束 `(slug, locale)`；翻译是同 slug 的另一 locale 行，`translate-pipeline` 生成
-- 路由层：v1 单语（`/posts/[slug]`）；v2 启用 next-intl 时迁移为 `/[locale]/posts/[slug]`（默认 locale 不前缀）
-- UI 层：文案集中 `src/i18n/zh.ts`（v1 单文件），结构即未来 messages 目录形状
-- **不在 v1 引入 next-intl 运行时**——只保留架构位（依赖规范中列为 reserved）
+**策略：从第一天就建成多语言路由结构**——内容中文优先，英文由翻译管线增量生成；**加一门语言 = 加内容，零重构**。
+
+- **路由**：全部页面嵌套 `app/[lang]/`，根布局即 `app/[lang]/layout.tsx`（含 `<html lang={lang}>`，官方指南明确允许根布局置于语言段内）；`generateStaticParams` 返回 `[{ lang: 'zh' }]`（en 上线时追加）；`PageProps<'/[lang]/posts/[slug]'>` 全局类型助手
+- **语言协商**（`proxy.ts` 的唯一合法职责——官方指南标准用法，可下沉 CDN）：`Accept-Language` → `@formatjs/intl-localematcher` + `negotiator` → 无前缀路径 302 到 `/{locale}/…`；matcher 排除 `/api`、`/_next`、静态资源；`/en/admin` 重定向 `/zh/admin`
+- **字典模式**（官方推荐的内置方案，不引 next-intl）：`app/[lang]/dictionaries/{zh,en}.json` + `getDictionary()`；**用 `next/root-params` 的 `lang()` getter 读取 locale**——服务端任意组件/工具零 prop drilling（注意：getter 不在 Client Component / Server Action / Route Handler 中运行，这些场景从 URL 或请求参数取）；`hasLocale()` 类型收窄 + 缺失即 `notFound()`
+- **与缓存的关系（本架构的优雅点）**：`use cache` 的缓存键**自动包含被读取的 root params**——查询函数内部 `await lang()` 后，每语言独立缓存条目自动成立，无需手动传 locale 参数
+- **数据层**：`posts.locale` + 唯一约束 `(slug, locale)`；翻译 = 同 slug 的另一 locale 行（`translate-pipeline` 生成）；英文列表只展示已翻译文章；未翻译文章的 `/en/` 直达 → 回退渲染中文正文 + 顶部提示条 + canonical 指向中文版
+- **SEO**：`generateMetadata` 输出 `alternates.languages`（仅列已存在的翻译）+ `openGraph.locale`；sitemap 双语言 + hreflang；`<html lang>` 由根布局参数直出
+- **RSS**：`app/[lang]/rss.xml/route.ts` 分语言 feed
+- **Agent**：聊天/搜索请求携带 locale（客户端从 URL 段取），agent 以访客语言回复
+- **admin**：仅中文（字典不覆盖管理台，工具界面直接中文）
+- **升级路径**：若字典模式未来撑不住（复数规则/日期格式化等复杂度上升），再引入 next-intl——路由结构已就位，迁移只动 UI 层，数据与路由零改动
 
 ---
 
@@ -422,9 +439,9 @@ lib/auth/index.ts
 app/api/auth/[...all]/route.ts
   export const { POST, GET } = toNextJsHandler(auth)
 
-app/(admin)/admin/layout.tsx（鉴权唯一入口，不用 proxy）
+app/[lang]/(admin)/admin/layout.tsx（鉴权唯一入口，不用 proxy；仅 zh）
   const session = await auth.api.getSession({ headers: await headers() })
-  if (!session) redirect('/admin/sign-in')
+  if (!session) redirect('/zh/admin/sign-in')
 ```
 
 - 登录方式：**Passkey 主**（Face ID / 指纹 / 安全密钥）+ TOTP 备用恢复；注册通道关闭（单用户）
@@ -465,18 +482,20 @@ sendBeacon('/api/events') ──▶ 限流 → 清洗（去 PII）
 
 ## 11. 渲染与缓存策略
 
+> 所有公开路由均带 `/{lang}/` 前缀；**缓存键自动包含 locale**（查询函数内 `await lang()`，§6.4），下表不再逐一标注。
+
 | 路由 | 渲染 | 缓存策略 | 失效触发 |
 |------|------|----------|----------|
-| `/` | RSC + 特效 client islands | `use cache` + `cacheLife('hours')` + `cacheTag('posts','site-stats')` | 发布/统计变更 |
-| `/posts` | RSC | `use cache` + `cacheTag('posts')` | 发布 |
-| `/posts/[slug]` | RSC（预编译 HTML 注入） | `use cache` + `cacheLife('max')` + `cacheTag('post:<slug>')` | 该文更新 |
-| `/projects` `/about` | RSC | `use cache` + `cacheLife('days')` | 手动 revalidate |
-| `/lab` `/lab/s/[id]` | RSC + client GenUI | `/lab` 静态；分享页 `use cache` + `cacheTag('spec:<id>')` | spec 创建即失效 |
-| `/search` | RSC + client 交互 | 页面静态壳；结果走 `/api/search`（dynamic + Redis 短缓存 60s） | — |
-| `/api/chat` | Route Handler（SSE 流） | dynamic，no-store | — |
-| `/admin/**` | RSC dynamic | `force-dynamic`，no-store | — |
-| `/rss.xml` `/sitemap.xml` | Route Handler | `use cache` + `cacheTag('posts')` | 发布 |
-| `/opengraph-image` | ImageResponse | `use cache` + `cacheTag('post:<slug>')` | 该文更新 |
+| `/[lang]` | RSC + 特效 client islands | `use cache` + `cacheLife('hours')` + `cacheTag('posts','site-stats')` | 发布/统计变更 |
+| `/[lang]/posts` | RSC | `use cache` + `cacheTag('posts')` | 发布 |
+| `/[lang]/posts/[slug]` | RSC（预编译 HTML 注入） | `use cache` + `cacheLife('max')` + `cacheTag('post:<slug>')` | 该文更新 |
+| `/[lang]/projects` `/[lang]/about` | RSC | `use cache` + `cacheLife('days')` | 手动 revalidate |
+| `/[lang]/lab` `/[lang]/lab/s/[id]` | RSC + client GenUI | `/lab` 静态；分享页 `use cache` + `cacheTag('spec:<id>')` | spec 创建即失效 |
+| `/[lang]/search` | RSC + client 交互 | 页面静态壳；结果走 `/api/search`（dynamic + Redis 短缓存 60s） | — |
+| `/api/chat` | Route Handler（SSE 流） | dynamic，no-store（locale 随请求体） | — |
+| `/[lang]/(admin)/admin/**` | RSC dynamic | `force-dynamic`，no-store | — |
+| `/[lang]/rss.xml` `/sitemap.xml` | Route Handler | `use cache` + `cacheTag('posts')` | 发布 |
+| `/[lang]/opengraph-image` | ImageResponse | `use cache` + `cacheTag('post:<slug>')` | 该文更新 |
 
 **发布动作的事务性**：`posts` 更新 → 编译产物写入 → `revalidateTag('post:<slug>', 'posts')` → RSS/sitemap/OG 同步失效。失败回滚走 revisions。
 
@@ -527,3 +546,5 @@ k3s 集群
 | A6 | 发布时编译 MDX 而非运行时 | 运行时零编译开销；`use cache` 直接读产物；编译失败的反馈在发布时而非访客侧 |
 | A7 | 自研埋点而非 Umami | 数据直接进 agent 工具链（GenUI 数据卡）；~百行成本换取零集成摩擦 |
 | A8 | 限流三重闸（Redis + LiteLLM 预算 + stepCountIs） | 公开 agent 是成本敞口；三重独立防线，任何一层失效不致命 |
+| A9 | i18n 第一天就走 `app/[lang]/` + 字典模式（官方指南标准） | 「预适配」的正确姿势：加语言 = 加内容而非重构；`use cache` 自动按 locale 分缓存键；不引 next-intl（内置方案即最佳实践） |
+| A10 | Harness 用 v7 `ToolLoopAgent` + 官方 `createMCPClient`，不手写循环 | 官方 Agent 抽象自带审批/步数/缓存钩子（toolApproval/stopWhen/prepareCall）；MCP 官方客户端免费获得 OAuth 与会话重连；手写循环零收益纯风险 |

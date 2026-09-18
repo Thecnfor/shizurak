@@ -37,12 +37,12 @@
 
 | 包 | 版本 | 用途 |
 |----|------|------|
-| `shadcn`（CLI） | 4.19.x | 组件基座（复制到仓库自持，`components/ui/`，禁止整体升级覆盖） |
-| `@radix-ui/react-*` | 按 shadcn 引入 | 无头原语（dialog/dropdown/popover/tabs/tooltip/scroll-area/switch…） |
-| `lucide-react` | 1.14.x | 图标（唯一图标源） |
-| `tailwind-merge` + `clsx` | 3.x / 2.x | 类名合成（shadcn 标准 `cn()`） |
-| `sonner` | 2.x | 轻提示（主题化） |
-| `cmdk` | 1.x | ⌘K 命令面板 |
+| `shadcn`（CLI） | 4.21.0 | 组件基座（复制到仓库自持，`components/ui/`，禁止整体升级覆盖） |
+| `@radix-ui/react-*` | 按 shadcn 引入（当前 1.1.x 系，如 dialog 1.1.23） | 无头原语（dialog/dropdown/popover/tabs/tooltip/scroll-area/switch…） |
+| `lucide-react` | 1.47.0 | 图标（唯一图标源） |
+| `tailwind-merge` + `clsx` | 3.7.0 / 2.1.1 | 类名合成（shadcn 标准 `cn()`） |
+| `sonner` | 2.0.8 | 轻提示（主题化） |
+| `cmdk` | 1.1.1 | ⌘K 命令面板 |
 | `@number-flow/react` | 0.6.2 | 遥测数字滚动（HUD 核心质感件） |
 
 ### 2.3 动效层
@@ -61,16 +61,17 @@
 | `zustand` | 5.0.15 | 三个全局 store | L3（theme / ui-shell / agent） |
 | `swr` | 2.5.1 | 客户端增量拉取 | L4（评论数/实时计数，仅此） |
 | `nuqs` | 2.10.1 | URL 状态 | L2（搜索/筛选/分页/主题分享码） |
-| `react-hook-form` | 7.x | 表单 | L6（仅 /admin） |
+| `react-hook-form` | 7.88.0 | 表单 | L6（仅 /admin） |
 | `zod` | 4.6.5 | 校验 | 表单 + DB schema + GenUI catalog 共用 |
 
 ### 2.5 AI 与 Agent Harness
 
 | 包 | 版本 | 用途 |
 |----|------|------|
-| `ai` | 7.0.106 | Vercel AI SDK 核心（`streamText` / `toolApproval` / `stopWhen`） |
+| `ai` | 7.0.106 | Vercel AI SDK 核心：**`ToolLoopAgent`**（官方 Agent 抽象——审批/步数/缓存钩子）/ `toolApproval` / `stopWhen` / reasoning parts |
 | `@ai-sdk/react` | 4.0.109 | `useChat` + `DefaultChatTransport` |
 | `@ai-sdk/openai-compatible` | 3.0.52 | provider 指向 **LiteLLM 网关**（零密钥直连） |
+| `@ai-sdk/mcp` | 2.0.53 | **官方 MCP 客户端**（`createMCPClient`：Streamable HTTP/SSE/stdio + OAuth + 会话重连） |
 | `@mastra/core` | 1.67.0 | 工作流引擎（`createWorkflow/createStep/commit`）：content/ingest/index/translate 管线 |
 | `@json-render/core` | 0.21.0 | GenUI 确定性引擎：catalog（Zod）+ spec 类型 |
 | `@json-render/react` | 0.21.0 | `Renderer` / `StateProvider` / `VisibilityProvider` |
@@ -79,6 +80,8 @@
 | `@openuidev/lang-core` | 0.3.0 | OpenUI Lang 解析/提示生成（框架无关层，服务端用） |
 | `@openuidev/react-ui` | 0.16.1 | OpenUI 预构建聊天布局（选择性取用，皮肤自绘） |
 | Cordis 4.0（vendor） | — | 微内核（自 cross-dashboard 复用，MIT，不装 npm 包） |
+
+> **不引 `@openuidev/react-headless`（0.16.1）**：它提供 headless 聊天状态 + AI SDK/AG-UI 流式适配器——但本站聊天状态的唯一源是 AI SDK `useChat`（状态规范 §3.5），引入会造成双状态源。OpenUI Lang 流直接喂 `react-lang` 渲染器即可；若实现中发现需要官方适配器，再作为**适配层**引入（不接管状态）。
 
 ### 2.6 内容与阅读
 
@@ -90,45 +93,76 @@
 | `shiki` | 4.4.3 | 代码高亮（**双主题** + CSS variables，随站点主题） |
 | `katex` | 0.18.7 | 数学公式 |
 | `mermaid` | 12.0.0 | 图表渲染（客户端，主题化） |
-| `unified` + `remark-*` / `rehype-*` | 11.x 系 | MDX 编译管线（gfm/math/rehype-katex/slug/autolink/stringify） |
-| `reading-time` | 1.5.x | 阅读时长 |
+| `unified` | 11.0.5 | MDX 编译管线核心 |
+| `remark-parse` / `remark-gfm` / `remark-math` / `remark-rehype` | 11.0.0 / 4.0.1 / 6.0.0 / 11.1.2 | remark 系（GFM + 数学） |
+| `rehype-katex` / `rehype-slug` / `rehype-autolink-headings` / `rehype-stringify` | 7.0.1 / 6.0.0 / 7.1.0 / 10.0.1 | rehype 系（公式渲染 + 锚点 + 序列化） |
+| `reading-time` | 1.5.0 | 阅读时长 |
 | `feed` | 6.0.0 | RSS/Atom 生成 |
-| `@tiptap/react` + `@tiptap/starter-kit` 等 | 3.31.3 | CMS 富文本编辑器（+ markdown 序列化） |
-| `@codemirror/*` | 6.x | CMS 源码模式编辑器 |
-| `uuid` | 11.x | uuid v7 生成（时间有序主键） |
-| `minio` | 8.x | MinIO SDK（媒体上传/签名 URL） |
-| `ioredis` | 5.x | Redis 客户端（限流/缓存/计数） |
+| `@tiptap/react` + `@tiptap/starter-kit` + `@tiptap/pm` | 3.31.3 | CMS 富文本编辑器（+ markdown 序列化） |
+| `@codemirror/lang-markdown` + `@codemirror/*` | 6.5.2 + 6.x | CMS 源码模式编辑器 |
+| `uuid` | 14.0.2 | uuid v7 生成（时间有序主键） |
+| `minio` | 8.0.7 | MinIO SDK（媒体上传/签名 URL） |
+| `ioredis` | 6.0.0 | Redis 客户端（限流/缓存/计数） |
 | `better-auth` | 1.7.5 | 认证核心（Drizzle adapter + session） |
 | `@better-auth/passkey` | 1.7.5 | Passkey（WebAuthn）插件 |
 | `@waline/client` | 3.15.2 | 评论前端（服务端为 Docker 镜像 `waline/waline`，非 npm 依赖） |
+
+### 2.6b i18n（预适配，架构规范 §6.4）
+
+| 包 | 版本 | 用途 |
+|----|------|------|
+| `negotiator` | 1.1.0 | `Accept-Language` 解析（proxy 语言协商，官方指南标准搭配） |
+| `@formatjs/intl-localematcher` | 0.9.0 | 语言匹配（locale 协商决策，官方指南标准搭配） |
 
 ### 2.7 可观测
 
 | 包 | 版本 | 用途 |
 |----|------|------|
-| `@vercel/otel` | 2.x | OTel SDK 封装（→ 集群 OTLP：Tempo/Loki/Prometheus） |
-| `@opentelemetry/api` | 1.x | 手动 span（agent 调用链、GenUI 渲染耗时） |
+| `@vercel/otel` | 2.1.3 | OTel SDK 封装（→ 集群 OTLP：Tempo/Loki/Prometheus） |
+| `@opentelemetry/api` | 1.9.1 | 手动 span（agent 调用链、GenUI 渲染耗时） |
 
 ### 2.8 开发与质量（devDependencies）
 
 | 包 | 版本 | 用途 |
 |----|------|------|
-| `vitest` + `@testing-library/react` + `jsdom` | 最新 | 单元/组件测试 |
-| `@playwright/test` | 最新 | E2E（**唯一自动化门禁**，对齐 cross-dashboard 模式） |
-| `@next/bundle-analyzer` | 16.x | 包体分析（对齐 §5 预算） |
-| `@lhci/cli` | 最新 | Lighthouse CI（性能预算门禁） |
-| `cn-font-split` | 最新 | 中文字体分片（构建工具，见设计规范 §3.1） |
-| `tsx` | 最新 | scripts/ 运行（ingest / export / theme-check） |
+| `vitest` + `@testing-library/react` + `jsdom` | 5.0.1 / 16.3.3 / 30.1.0 | 单元/组件测试 |
+| `@playwright/test` | 1.63.0 | E2E（**唯一自动化门禁**，对齐 cross-dashboard 模式） |
+| `@next/bundle-analyzer` | 16.3.5 | 包体分析（对齐 §5 预算） |
+| `@lhci/cli` | 0.15.1 | Lighthouse CI（性能预算门禁） |
+| `cn-font-split` | 7.4.3 | 中文字体分片（构建工具，见设计规范 §3.1） |
+| `tsx` | 4.23.13 | scripts/ 运行（ingest / export / theme-check） |
+| `@types/negotiator` | 0.6.5 | negotiator 类型（proxy 语言协商） |
+| `@openuidev/cli` | 0.3.0 | 从组件库定义生成 OpenUI 系统提示/JSON schema（构建期运行，产物进仓库） |
 | `@json-render/devtools-react` | 0.21.0 | GenUI spec 调试面板（仅 dev 环境挂载） |
 
 ### 2.9 预留（v1 不安装，架构留位）
 
 | 包/能力 | 启用时机 | 说明 |
 |---------|----------|------|
-| `next-intl` 4.14.5 | i18n 开启时（架构规范 §6.4） | 数据层 locale 列已预留 |
-| MCP 服务端（blog-as-MCP） | Later | 对外暴露博客知识为 MCP server |
+| `next-intl` 4.14.5 | 仅当内置字典模式撑不住时 | i18n 已按官方最佳实践预适配（`[lang]` 路由 + 字典 + root-params，架构规范 §6.4）；next-intl 是升级备选而非默认路径 |
+| MCP 服务端（blog-as-MCP） | Later | 对外暴露博客知识为 MCP server（客户端侧 `@ai-sdk/mcp` 已就位） |
 | pgvector 嵌入管线 | v2（搜索语义化） | `embedding` 列预留；扩展随 CNPG 镜像启用 |
 | OGL（可选） | 若裸 WebGL2 样板过重 | 3KB WebGL 辅助；默认不引入，自研 shader 层优先 |
+| `@openuidev/react-headless` | 仅当 react-lang 直喂流不够用 | 见 §2.5 注：不接管聊天状态，只作适配器 |
+
+### 2.10 前沿性核对（2026-09-19 全量实测）
+
+> 立项要求「一切前沿」的逐层核对——每层锁定该生态当前最前沿选择，拒绝次新版：
+
+| 层 | 前沿选择 | 核对 |
+|----|----------|:----:|
+| 框架 | Next.js 16.3.5（Cache Components · React Compiler · proxy · **root-params 新 API**）· React 19.2.8 | ✓ npm latest |
+| AI 核心 | **AI SDK v7.0.106**：`ToolLoopAgent`（v7 官方 Agent 抽象）· `toolApproval`（v7 稳定化）· reasoning parts · `allowSystemInMessages` 防注入 | ✓ 主版本 v7（非 v5/v6） |
+| Harness | DSH-Cordis 微内核（cross-dashboard 生产验证 vendor）+ Mastra 1.67.0 + **`@ai-sdk/mcp` 2.0.53 官方 MCP** | ✓ 各自 latest |
+| GenUI | **json-render 0.21**（Vercel Labs）+ **OpenUI react-lang 0.3**（thesysdev，9.6k★，MIT，昨日仍在推送）双引擎 | ✓ 各自 latest |
+| 动效 | GSAP 3.15.0（全插件免费时代：SplitText/ScrollTrigger/Flip 全量可用）+ motion 13.4.0 | ✓ 最新主版本 |
+| 样式 | Tailwind 4（CSS-first `@theme`）+ shadcn CLI 4.21.0 | ✓ |
+| 认证 | better-auth 1.7.5 + `@better-auth/passkey`（WebAuthn 无密码） | ✓ |
+| 数据 | Drizzle 0.45.2 + postgres.js 3.4.9 | ✓ |
+| 内容 | Shiki 4.4.3（双主题）· Mermaid 12 · TipTap 3.31.3 · KaTeX 0.18.7 | ✓ |
+| i18n | Next.js 官方模式：`[lang]` + `proxy` 协商 + `next/root-params`（16.x 新 API） | ✓ 官方指南 |
+
+**排除的前沿诱惑**（评估后不采用，理由入库）：AG-UI 协议（AI SDK 自有 UI 消息流已闭环，引入是双重协议栈）· `@openuidev/react-headless`（与 useChat 双状态源，见 §2.5 注）· v7 `WorkflowAgent`/@ai-sdk/workflow（Mastra 已是工作流层，不叠床架屋）。
 
 ---
 
@@ -197,15 +231,17 @@
 
 ```
 框架   next 16.3.5 · react 19.2.8 · ts 5 · tailwind 4 · biome 2.4.2 · react-compiler
-UI     shadcn + radix · lucide · cmdk · sonner · number-flow
+UI     shadcn 4.21 + radix · lucide · cmdk · sonner · number-flow
 动效   gsap 3.15 + @gsap/react · motion 13 · lenis
-状态   zustand 5 · swr 2.5 · nuqs 2.10 · rhf + zod 4
-AI     ai 7.0 · @ai-sdk/react · @ai-sdk/openai-compatible → LiteLLM
-       mastra 1.67 · json-render 0.21 ×3 · openui react-lang 0.3 + lang-core + react-ui
+状态   zustand 5 · swr 2.5 · nuqs 2.10 · rhf 7.88 + zod 4
+AI     ai 7.0.106 (ToolLoopAgent) · @ai-sdk/react · @ai-sdk/openai-compatible → LiteLLM
+       @ai-sdk/mcp 2.0.53 (官方 MCP) · mastra 1.67
+       json-render 0.21 ×3 · openui react-lang 0.3 + lang-core + react-ui
        cordis 4.0 (vendor)
-内容   drizzle 0.45 + postgres 3.4 · shiki 4 · katex · mermaid 12 · unified 系
-       tiptap 3 · codemirror 6 · feed · reading-time · uuid 11
+内容   drizzle 0.45 + postgres 3.4 · shiki 4 · katex · mermaid 12 · unified 系 11
+       tiptap 3.31 · codemirror 6 · feed · reading-time · uuid 14
        better-auth 1.7.5 + passkey · waline client 3.15
-运维   minio sdk · ioredis · @vercel/otel
-质量   vitest · playwright · lhci · bundle-analyzer · cn-font-split (dev)
+i18n   negotiator 1.1 + @formatjs/intl-localematcher 0.9（官方指南标准搭配）
+运维   minio 8.0 · ioredis 6.0 · @vercel/otel 2.1
+质量   vitest 5 · playwright 1.63 · lhci · bundle-analyzer · cn-font-split (dev)
 ```

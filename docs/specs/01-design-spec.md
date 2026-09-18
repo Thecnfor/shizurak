@@ -293,12 +293,16 @@ export interface ThemeOverrides {
 | small | `0.875rem` / 1.6 / 0.01em | 辅助 |
 | micro | `0.75rem` / 1.5 / 0.06em / uppercase | HUD 标签、徽章 |
 
-### 3.3 中英混排规则
+### 3.3 中英混排与分语言排版规则
 
 - 中英文之间自动空格（`text-autospace` + 兜底 remark 插件处理内容层）
 - 中文标点用全角，代码/URL 内用半角
 - 行高：中文正文 ≥ 1.7（西文可 1.6）
 - 禁止中文两端对齐（`text-align: justify` 中文场景禁用）
+- **分语言细则**（i18n 预适配，架构规范 §6.4）：
+  - `zh`：正文 1.75 行高、段落最大宽度 `68ch`、tracking 0
+  - `en`：正文 1.6 行高、段落最大宽度 `72ch`、display 标题 tracking 收紧至 `-0.03em`（西文大字号需要负字距）
+  - 由根布局的 `lang` 参数驱动（`[lang="en"]` 选择器微调），组件代码零分支
 
 ---
 

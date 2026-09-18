@@ -53,13 +53,14 @@
 
 | 状态 | 参数 | 页面 |
 |------|------|------|
+| 语言 | 路径段 `/{lang}/…`（proxy 协商；`next/root-params` 服务端直读） | 全局 |
 | 搜索词 | `?q=` | /search |
 | 标签筛选 | `?tag=` | /posts |
 | 分页 | `?page=` | /posts |
 | 主题分享码 | `?theme=void&ov=<base64url>` | 全局（layout 层解析） |
 | 实验室 prompt | `?p=` | /lab |
 
-- 全部经 `nuqs` 的 `useQueryState`（App Router 原生，SSR 兼容）
+- 全部经 `nuqs` 的 `useQueryState`（App Router 原生，SSR 兼容）；**locale 除外**——它是路径段而非查询参数，服务端经 `next/root-params` 读取，客户端经 `useParams()` 读取
 - 服务端组件读 `searchParams`（`PageProps<'/search'>` 类型化）直接查询——**URL 是服务端与客户端共享状态的唯一通道**
 - 规则：任何「刷新后应该保留」的视图状态必须先考虑 URL
 
@@ -139,6 +140,7 @@ const { messages, sendMessage, status, stop } = useChat({
         messages, id,
         pageContext: pageContext.snapshot(),   // 内核 Service 直读
         theme: useThemeStore.getState().themeId,
+        locale: localeFromParams,              // useParams() 取路径语言段（root-params 不进客户端）
       },
     }),
   }),
