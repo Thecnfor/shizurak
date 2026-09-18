@@ -1,5 +1,8 @@
 {
-  "site": { "title": "伍泽凯 · Shizurak", "tagline": "从生产环境里长出来的技术" },
+  "site": {
+    "title": "伍泽凯 · Shizurak",
+    "tagline": "从生产环境里长出来的技术"
+  },
   "nav": {
     "posts": "文章",
     "projects": "项目",

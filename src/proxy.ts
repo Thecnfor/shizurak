@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { hasLocale, negotiateLocale } from "@/lib/i18n/negotiate";
 
 export function proxy(request: NextRequest) {
