@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDictionary } from "@/app/[lang]/dictionaries";
+import { ThemeSwitcher } from "@/components/site/theme-switcher";
 
 export async function SiteNav({ lang }: { lang: string }) {
   const dict = await getDictionary();
@@ -28,7 +29,19 @@ export async function SiteNav({ lang }: { lang: string }) {
               {l.label}
             </Link>
           ))}
-          <div id="theme-switcher-slot" />
+          <ThemeSwitcher
+            labels={{
+              switcher: dict.nav.theme,
+              mode: dict.theme.mode,
+              light: dict.theme.light,
+              dark: dict.theme.dark,
+              system: dict.theme.system,
+              customize: dict.theme.customize,
+              accentHue: dict.theme.accentHue,
+              intensity: dict.theme.intensity,
+              motionSpeed: dict.theme.motionSpeed,
+            }}
+          />
         </div>
       </nav>
     </header>
