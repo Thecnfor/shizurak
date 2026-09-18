@@ -93,14 +93,14 @@ export interface ThemeMotion {
 }
 
 export interface ThemeEffects {
-  background: 'nebula' | 'none' | 'paper-grain'
+  background: 'nebula' | 'starfield' | 'none' | 'paper-grain'
   overlays: Array<'scanline' | 'grain' | 'grid' | 'vignette'>
   cursor: 'reticle' | 'default'
   hud: boolean                     // HUD 遥测装饰（真实数据）
   intensity: number                // 0–1 默认强度（用户可覆盖）
-  /** 主题分包入口：特效层动态加载（lumen 永不下载 WebGL 代码） */
-  load?: () => Promise<{ Background: React.ComponentType<EffectProps> }>
 }
+// 注：特效实现不在此声明——主题是纯数据；字符串 id 由 lib/fx/registry.ts 解析为
+// 动态 import（mermaid 式分包），themes/ 目录禁止依赖 React 组件
 
 export interface ThemeGenUI {
   catalogVariant: 'hud' | 'clean'  // json-render 组件皮肤
@@ -124,10 +124,9 @@ src/themes/
 ├── contract.ts          # 上述契约 + 校验
 ├── registry.ts          # 静态注册表（构建时全量已知）
 ├── void/
-│   ├── index.ts         # Theme 定义
-│   ├── tokens.css       # CSS variables（@theme inline 映射；单模主题一套，双模主题 [data-mode] 两套）
-│   ├── effects.tsx      # 特效层入口（dynamic import 目标）
-│   └── genui.tsx        # HUD 皮肤组件变体
+│   ├── index.ts         # Theme 定义（纯数据，零 React 依赖）
+│   ├── tokens.css       # CSS variables（单模主题一套，双模主题 [data-mode] 两套；由 tokens.ts 构建期生成）
+│   └── genui.tsx        # HUD 皮肤组件变体（GenUI 皮肤，M2 起用）
 ├── lumen/               # 同构（无 effects，load 返回空）
 └── reserved/            # terminal / paper / cyber 的占位清单
 ```
@@ -178,7 +177,7 @@ export interface ThemeOverrides {
 | 特效层 GLSL | ~8KB | 0 |
 | GenUI 皮肤 | ~6KB（懒加载） | ~4KB |
 
-规则：`effects.load()` 是唯一特效入口；`lumen` 的 `load` 为 `undefined`。构建产物按主题分 chunk，访客只下载当前主题的代码。
+规则：特效唯一入口是 `lib/fx/registry.ts`（`effects.background` 字符串 id → 动态 import）；`lumen` 的 `background` 为 `'none'`，**永不请求特效 chunk**。构建产物按特效分 chunk，访客只下载当前主题实际引用的代码。
 
 ---
 
@@ -242,7 +241,7 @@ export interface ThemeOverrides {
 | `surface` | `#ffffff` | `#161616` |
 | `ink` | `#1a1a1a` | `#ececec` |
 | `inkSecondary` | `#4a4a4a` | `#b8b8b8` |
-| `inkMuted` | `#8a8a8a` | `#8a8a8a` |
+| `inkMuted` | `#6b6b6b` | `#8a8a8a` |
 | `accent` | `#0071e3` | `#0a84ff` |
 | `border` | `rgba(0,0,0,0.08)` | `rgba(255,255,255,0.10)` |
 
@@ -319,6 +318,8 @@ export interface ThemeOverrides {
 ## 5. 特效目录（Effects Catalog）
 
 每个特效必须声明：**预算 / 降级 / reduced-motion** 三级路径。
+
+**实现顺序**（M0 先以 `starfield` 验证特效管线，其余递增）：`starfield`（M0）→ `hud-grid` / `telemetry`（M1）→ `nebula` WebGL shader（M1）→ `scanline`/`grain`/`reticle`/`launch-hero`（M1.5 打磨）。
 
 | ID | 主题 | 实现 | 性能预算 | 低端降级 | reduced-motion |
 |----|------|------|----------|----------|----------------|
