@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { hasLocale } from "@/lib/i18n/negotiate";
+import { THEME_INIT_SCRIPT } from "@/lib/themes/init-script";
 import "../globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -32,7 +34,12 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${inter.variable}`}
     >
-      <body className="min-h-dvh bg-bg text-ink antialiased">{children}</body>
+      <head>
+        <script id="theme-init">{THEME_INIT_SCRIPT}</script>
+      </head>
+      <body className="min-h-dvh bg-bg text-ink antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }
