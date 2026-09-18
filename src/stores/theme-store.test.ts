@@ -1,0 +1,47 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { useThemeStore } from "./theme-store";
+
+describe("theme-store", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useThemeStore.getState().hydrate();
+  });
+
+  it("默认 void", () => {
+    expect(useThemeStore.getState().themeId).toBe("void");
+    expect(useThemeStore.getState().resolved.meta.id).toBe("void");
+  });
+
+  it("setTheme 切换并持久化", () => {
+    useThemeStore.getState().setTheme("lumen");
+    expect(useThemeStore.getState().resolved.meta.id).toBe("lumen");
+    expect(JSON.parse(localStorage.getItem("shizurak:theme") ?? "{}").themeId).toBe(
+      "lumen",
+    );
+  });
+
+  it("setOverride 触发 resolved 重算并持久化", () => {
+    useThemeStore.getState().setOverride("motionSpeed", 2);
+    expect(useThemeStore.getState().resolved.motion.duration.ui).toBe(560);
+    expect(
+      JSON.parse(localStorage.getItem("shizurak:theme") ?? "{}").overrides
+        .motionSpeed,
+    ).toBe(2);
+  });
+
+  it("hydrate 从 localStorage 还原", () => {
+    localStorage.setItem(
+      "shizurak:theme",
+      JSON.stringify({ themeId: "lumen", overrides: { accentHue: 40 } }),
+    );
+    useThemeStore.getState().hydrate();
+    expect(useThemeStore.getState().themeId).toBe("lumen");
+    expect(useThemeStore.getState().overrides.accentHue).toBe(40);
+  });
+
+  it("未知主题 id 回退 void", () => {
+    localStorage.setItem("shizurak:theme", JSON.stringify({ themeId: "nope" }));
+    useThemeStore.getState().hydrate();
+    expect(useThemeStore.getState().themeId).toBe("void");
+  });
+});
