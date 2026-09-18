@@ -6,6 +6,21 @@ import { applyMotionDefaults } from "@/lib/motion/gsap";
 import { useThemeStore } from "@/stores/theme-store";
 import { getTheme } from "@/themes/registry";
 
+/**
+ * hydration 完成标记（E2E 等待点）。
+ * 置于 children 之后 + rAF 延迟：确保所有子组件（含键盘监听等副作用）的
+ * effect 都已执行后才翻转，避免测试在监听器注册前抢跑。
+ */
+function HydrationMarker() {
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      document.documentElement.dataset.hydrated = "true";
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return null;
+}
+
 function DomSync() {
   const resolved = useThemeStore((s) => s.resolved);
   const { resolvedTheme, setTheme: setNextTheme } = useTheme();
@@ -65,6 +80,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     >
       <DomSync />
       {children}
+      <HydrationMarker />
     </NextThemesProvider>
   );
 }
