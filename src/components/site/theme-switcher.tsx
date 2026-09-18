@@ -25,7 +25,7 @@ function LabeledSlider({
   onValueChange: (v: number) => void;
 }) {
   return (
-    <label className="block text-xs text-ink-muted">
+    <div className="block text-xs text-ink-muted">
       {label} · {display}
       <Slider.Root
         className="relative mt-1 flex h-4 w-full touch-none select-none items-center"
@@ -43,7 +43,7 @@ function LabeledSlider({
           className="block size-3 rounded-full bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         />
       </Slider.Root>
-    </label>
+    </div>
   );
 }
 
