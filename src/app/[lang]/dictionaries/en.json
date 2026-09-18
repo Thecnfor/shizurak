@@ -1,0 +1,32 @@
+{
+  "site": {
+    "title": "Shizurak · Zekai Wu",
+    "tagline": "Technology grown from production environments"
+  },
+  "nav": {
+    "posts": "Posts",
+    "projects": "Projects",
+    "about": "About",
+    "lab": "Lab",
+    "theme": "Theme"
+  },
+  "footer": { "rights": "© 2026 Zekai Wu · shizurak" },
+  "home": { "heroKicker": "Personal site · Under construction" },
+  "theme": {
+    "switcher": "Theme",
+    "mode": "Mode",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "customize": "Customize",
+    "accentHue": "Accent hue",
+    "intensity": "Effects intensity",
+    "motionSpeed": "Motion speed"
+  },
+  "command": {
+    "placeholder": "Search or type a command…",
+    "nav": "Navigate",
+    "theme": "Theme",
+    "empty": "No results"
+  }
+}

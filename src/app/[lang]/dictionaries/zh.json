@@ -1,0 +1,29 @@
+{
+  "site": { "title": "伍泽凯 · Shizurak", "tagline": "从生产环境里长出来的技术" },
+  "nav": {
+    "posts": "文章",
+    "projects": "项目",
+    "about": "关于",
+    "lab": "实验室",
+    "theme": "主题"
+  },
+  "footer": { "rights": "© 2026 伍泽凯 · shizurak" },
+  "home": { "heroKicker": "个人站点 · 建设中" },
+  "theme": {
+    "switcher": "主题",
+    "mode": "明暗",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统",
+    "customize": "个性化",
+    "accentHue": "强调色相",
+    "intensity": "特效强度",
+    "motionSpeed": "动效速度"
+  },
+  "command": {
+    "placeholder": "搜索或输入命令…",
+    "nav": "导航",
+    "theme": "主题",
+    "empty": "无匹配结果"
+  }
+}
