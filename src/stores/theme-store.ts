@@ -32,7 +32,14 @@ function readPersisted(): PersistedShape {
         parsed.modeChoice === "light" || parsed.modeChoice === "dark"
           ? parsed.modeChoice
           : "system",
-      overrides: (parsed.overrides ?? {}) as ThemeOverrides,
+      // 契约 v2：丢弃旧版持久化的未知键（accentHue / effectsIntensity 等）
+      overrides: Object.fromEntries(
+        Object.entries(
+          (parsed.overrides ?? {}) as Record<string, unknown>,
+        ).filter(
+          ([k]) => k === "hum" || k === "riftIntensity" || k === "motionSpeed",
+        ),
+      ) as ThemeOverrides,
     };
   } catch {
     return { themeId: voidTheme.meta.id, modeChoice: "system", overrides: {} };

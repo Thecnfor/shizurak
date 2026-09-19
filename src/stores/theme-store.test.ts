@@ -29,14 +29,21 @@ describe("theme-store", () => {
     ).toBe(2);
   });
 
-  it("hydrate 从 localStorage 还原", () => {
+  it("hydrate 还原新旋钮，丢弃旧版未知键", () => {
     localStorage.setItem(
       "shizurak:theme",
-      JSON.stringify({ themeId: "lumen", overrides: { accentHue: 40 } }),
+      JSON.stringify({
+        themeId: "lumen",
+        overrides: { accentHue: 40, hum: 0.5, motionSpeed: 1.5 },
+      }),
     );
     useThemeStore.getState().hydrate();
     expect(useThemeStore.getState().themeId).toBe("lumen");
-    expect(useThemeStore.getState().overrides.accentHue).toBe(40);
+    expect(
+      (useThemeStore.getState().overrides as Record<string, unknown>).accentHue,
+    ).toBeUndefined();
+    expect(useThemeStore.getState().overrides.hum).toBe(0.5);
+    expect(useThemeStore.getState().overrides.motionSpeed).toBe(1.5);
   });
 
   it("未知主题 id 回退 void", () => {

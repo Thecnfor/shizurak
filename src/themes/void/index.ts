@@ -77,7 +77,7 @@ const voidTokens = {
     shadowMd: "0 8px 24px rgba(0, 0, 0, 0.5)",
     glow: "0 0 24px rgba(94, 234, 212, 0.15)",
   },
-  texture: { noiseOpacity: 0.03, gridOpacity: 0.05, scanlineOpacity: 0.04 },
+  texture: { noiseOpacity: 0.03, gridOpacity: 0, scanlineOpacity: 0 },
 } satisfies Theme["tokens"]["dark"];
 
 export const voidTheme: Theme = {
@@ -98,6 +98,7 @@ export const voidTheme: Theme = {
       exit: "cubic-bezier(0.7, 0, 0.84, 0)",
       emphasis: "cubic-bezier(0.34, 1.56, 0.64, 1)",
       scroll: "power2.out",
+      rift: "cubic-bezier(0.85, 0, 0.15, 1)",
     },
     duration: { micro: 120, ui: 280, section: 800, scene: 1600 },
     gsap: { ease: "power3.out" },
@@ -105,18 +106,15 @@ export const voidTheme: Theme = {
       ui: { stiffness: 260, damping: 30 },
       layout: { stiffness: 300, damping: 32 },
     },
-    scrollIntensity: 0.9,
   },
   effects: {
-    background: "starfield",
-    overlays: ["scanline", "grain"],
-    cursor: "reticle",
-    hud: true,
-    intensity: 0.7,
+    renderer: "rift-layer",
+    hum: { breath: 0.6, flashlight: true, tremor: 0.3 },
+    rift: { tear: "diagonal", intensity: 0.7 },
   },
   genui: {
-    catalogVariant: "hud",
-    openuiVariant: "hud",
-    streamReveal: { stagger: 24, effect: "decode" },
+    catalogVariant: "stitch",
+    openuiVariant: "stitch",
+    streamReveal: { stagger: 24, effect: "tear" },
   },
 };

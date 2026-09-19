@@ -40,8 +40,8 @@ export async function SiteNav({ lang }: { lang: string }) {
               dark: dict.theme.dark,
               system: dict.theme.system,
               customize: dict.theme.customize,
-              accentHue: dict.theme.accentHue,
-              intensity: dict.theme.intensity,
+              hum: dict.theme.hum,
+              rift: dict.theme.rift,
               motionSpeed: dict.theme.motionSpeed,
             }}
           />

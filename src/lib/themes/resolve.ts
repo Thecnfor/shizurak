@@ -43,12 +43,19 @@ export function resolveTheme(
     },
   };
 
-  const backgroundOff =
-    overrides.background === false || theme.effects.background === "none";
+  const humK = overrides.hum ?? 1;
   const effects: ThemeEffects = {
     ...theme.effects,
-    background: backgroundOff ? "none" : theme.effects.background,
-    intensity: overrides.effectsIntensity ?? theme.effects.intensity,
+    renderer: humK === 0 ? "none" : theme.effects.renderer,
+    hum: {
+      breath: theme.effects.hum.breath * humK,
+      flashlight: humK > 0 && theme.effects.hum.flashlight,
+      tremor: theme.effects.hum.tremor * humK,
+    },
+    rift: {
+      ...theme.effects.rift,
+      intensity: overrides.riftIntensity ?? theme.effects.rift.intensity,
+    },
   };
 
   return {

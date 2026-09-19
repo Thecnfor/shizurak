@@ -26,8 +26,8 @@
     "dark": "Dark",
     "system": "System",
     "customize": "Customize",
-    "accentHue": "Accent hue",
-    "intensity": "Effects intensity",
+    "hum": "Curtain hum",
+    "rift": "Rift intensity",
     "motionSpeed": "Motion speed"
   },
   "command": {

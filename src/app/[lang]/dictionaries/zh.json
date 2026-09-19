@@ -26,8 +26,8 @@
     "dark": "深色",
     "system": "跟随系统",
     "customize": "个性化",
-    "accentHue": "强调色相",
-    "intensity": "特效强度",
+    "hum": "幕面底噪",
+    "rift": "撕裂烈度",
     "motionSpeed": "动效速度"
   },
   "command": {

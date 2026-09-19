@@ -16,10 +16,10 @@ export function FxLayer() {
     null,
   );
 
-  const entry = fxRegistry[effects.background];
+  const entry = fxRegistry[effects.renderer];
   const enabled =
-    effects.background !== "none" &&
-    effects.intensity > 0 &&
+    effects.renderer !== "none" &&
+    effects.rift.intensity > 0 &&
     !reduced &&
     entry !== undefined;
   const meetsTier =
@@ -56,5 +56,5 @@ export function FxLayer() {
     );
   }
 
-  return <Background intensity={effects.intensity} tier={tier} />;
+  return <Background intensity={effects.rift.intensity} tier={tier} />;
 }
