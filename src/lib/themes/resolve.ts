@@ -31,7 +31,13 @@ export function resolveTheme(
   if (!tokens)
     throw new Error(`主题 ${theme.meta.id} 缺少 ${effectiveMode} 模式令牌`);
 
-  const speed = overrides.motionSpeed ?? 1;
+  // 持久化数据不可信（localStorage 可被手改/旧版本残留）：非有限数回退默认，有限数夹进值域
+  const num = (v: unknown, min: number, max: number, dflt: number) =>
+    typeof v === "number" && Number.isFinite(v)
+      ? Math.min(max, Math.max(min, v))
+      : dflt;
+
+  const speed = num(overrides.motionSpeed, 0.5, 2, 1);
   const scale = (ms: number) => Math.round(ms * speed);
   const motion: ThemeMotion = {
     ...theme.motion,
@@ -43,10 +49,10 @@ export function resolveTheme(
     },
   };
 
-  const humK = overrides.hum ?? 1;
+  const humK = num(overrides.hum, 0, 1, 1);
   const effects: ThemeEffects = {
     ...theme.effects,
-    renderer: humK === 0 ? "none" : theme.effects.renderer,
+    renderer: humK <= 0 ? "none" : theme.effects.renderer,
     hum: {
       breath: theme.effects.hum.breath * humK,
       flashlight: humK > 0 && theme.effects.hum.flashlight,
@@ -54,7 +60,12 @@ export function resolveTheme(
     },
     rift: {
       ...theme.effects.rift,
-      intensity: overrides.riftIntensity ?? theme.effects.rift.intensity,
+      intensity: num(
+        overrides.riftIntensity,
+        0,
+        1,
+        theme.effects.rift.intensity,
+      ),
     },
   };
 

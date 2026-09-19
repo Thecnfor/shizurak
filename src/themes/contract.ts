@@ -100,7 +100,10 @@ export interface ThemeGenUI {
 
 export interface Theme {
   meta: ThemeMeta;
-  /** 继承另一主题 id：新主题只覆写四层中任意一层，其余从基座浅合并。 */
+  /**
+   * 继承另一主题 id：新主题只覆写四层中任意一层，其余从基座浅合并。
+   * registry 加载时物化继承链，resolveTheme 收到的已是扁平结果。
+   */
   extends?: string;
   tokens: Partial<Record<ThemeMode, ThemeTokens>>;
   motion: ThemeMotion;
@@ -109,7 +112,7 @@ export interface Theme {
 }
 
 export interface ThemeOverrides {
-  hum?: number;
-  riftIntensity?: number;
-  motionSpeed?: number;
+  hum?: number; // 0–1 乘数，默认 1；0 关闭特效层
+  riftIntensity?: number; // 0–1 绝对烈度
+  motionSpeed?: number; // 0.5–2 时长倍率
 }
