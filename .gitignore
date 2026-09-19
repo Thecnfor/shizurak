@@ -50,3 +50,6 @@ test-results/
 .superpowers/
 .qoder/
 !.env.example
+
+# git worktrees
+.worktrees/
