@@ -38,7 +38,7 @@ export async function listPublishedPosts(
   return rows;
 }
 
-/** 单篇详情（含编译产物 HTML + TOC）。缓存标签 post:<slug>。 */
+/** 单篇详情（含编译产物 HTML + TOC）。仅限已发布；缓存标签 post:<slug>。 */
 export async function getPostBySlug(slug: string, locale: string) {
   "use cache";
   cacheLife("days");
@@ -50,6 +50,7 @@ export async function getPostBySlug(slug: string, locale: string) {
       and(
         eq(posts.slug, slug),
         eq(posts.locale, locale as "zh" | "en"),
+        eq(posts.status, "published"), // 公开页不得读草稿/归档（防枚举泄露）
         isNull(posts.deletedAt),
       ),
     )

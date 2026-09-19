@@ -1,7 +1,8 @@
+import { revalidateTag } from "next/cache";
 import { postsRepo } from "@/lib/db/repo/posts";
 import { requireAdmin, unauthorized } from "@/lib/server/admin-auth";
 
-// 作者侧：草稿发布（status=draft→published）。真实 revalidate 由缓存生命周期处理。
+// 作者侧：草稿发布（status=draft→published）+ 失效对应缓存标签。
 export async function POST(req: Request): Promise<Response> {
   if (!requireAdmin(req)) return unauthorized();
   let id: string;
@@ -16,9 +17,18 @@ export async function POST(req: Request): Promise<Response> {
       headers: { "content-type": "application/json" },
     });
   }
-  const ok = await postsRepo.publish(id);
-  return new Response(JSON.stringify({ ok }), {
-    status: ok ? 200 : 404,
+  const published = await postsRepo.publish(id);
+  if (!published) {
+    return new Response(JSON.stringify({ ok: false }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  // 与 queries/posts.ts 的 cacheLife 档位对齐（列表 hours / 详情 days）
+  revalidateTag("posts", "hours");
+  revalidateTag(`post:${published.slug}`, "days");
+  return new Response(JSON.stringify({ ok: true, slug: published.slug }), {
+    status: 200,
     headers: { "content-type": "application/json" },
   });
 }

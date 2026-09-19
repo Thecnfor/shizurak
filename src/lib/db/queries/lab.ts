@@ -16,7 +16,7 @@ export async function listSharedSpecs(): Promise<SharedSpecSummary[]> {
   return specRepo.listShared();
 }
 
-/** 单份分享 spec（缓存，标签 spec:<id>）。 */
+/** 单份分享 spec（缓存，标签 spec:<id>）。仅暴露 shared=true，与列表意图一致。 */
 export async function getCachedSpec(
   id: string,
 ): Promise<{ kind: SavedSpec["kind"]; themeId: string; spec: unknown } | null> {
@@ -25,5 +25,6 @@ export async function getCachedSpec(
   cacheTag(`spec:${id}`, "specs");
   const { specRepo } = await import("../repo/agent");
   const row = await specRepo.load(id);
-  return row ? { kind: row.kind, themeId: row.themeId, spec: row.spec } : null;
+  if (!row || !row.shared) return null;
+  return { kind: row.kind, themeId: row.themeId, spec: row.spec };
 }

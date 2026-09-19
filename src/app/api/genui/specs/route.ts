@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { isSpec } from "@/lib/genui/parse-spec";
 
 // 保存 GenUI spec → genui_specs（分享用），返回 id。
@@ -43,6 +44,7 @@ export async function POST(req: Request): Promise<Response> {
     threadId: body.threadId,
     shared: body.shared !== false,
   });
+  revalidateTag("specs", "minutes"); // 与 queries/lab.ts 的 cacheLife 档位对齐
   return new Response(JSON.stringify({ id: saved.id }), {
     status: 201,
     headers: { "content-type": "application/json" },

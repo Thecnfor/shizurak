@@ -31,4 +31,18 @@ describe("compileContent（真实 unified/shiki/katex 管线）", () => {
     expect(out.toc.every((t) => t.id.length > 0)).toBe(true);
     expect(out.minutes).toBeGreaterThanOrEqual(1);
   });
+
+  it("纵深防御：恶意 HTML/事件/协议被消毒拦截", async () => {
+    const evil = [
+      "<script>alert(1)</script>",
+      '<img src="x" onerror="alert(2)">',
+      "[点我](javascript:alert(3))",
+      "<iframe src='//evil.example'></iframe>",
+    ].join("\n\n");
+    const out = await compileContent(evil);
+    expect(out.html).not.toContain("<script");
+    expect(out.html).not.toMatch(/onerror/i);
+    expect(out.html).not.toContain("javascript:");
+    expect(out.html).not.toContain("<iframe");
+  });
 });

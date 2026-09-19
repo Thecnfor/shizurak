@@ -34,7 +34,7 @@ export const postsRepo = {
       .returning({ id: posts.id, slug: posts.slug });
     return row;
   },
-  async publish(id: string): Promise<boolean> {
+  async publish(id: string): Promise<{ slug: string } | null> {
     const [row] = await getDb()
       .update(posts)
       .set({
@@ -43,7 +43,7 @@ export const postsRepo = {
         updatedAt: new Date(),
       })
       .where(eq(posts.id, id))
-      .returning({ id: posts.id });
-    return Boolean(row);
+      .returning({ slug: posts.slug });
+    return row ?? null;
   },
 };

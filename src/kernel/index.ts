@@ -39,23 +39,34 @@ export function createBackendKernel(): Kernel {
 interface GlobalWithKernel {
   __SHIZURAK_KERNEL__?: Kernel;
   __SHIZURAK_KERNEL_VERSION__?: number;
+  __SHIZURAK_KERNEL_PENDING__?: Promise<Kernel>;
 }
 
-/** 后端内核唯一入口：globalThis 单例 + KERNEL_VERSION 守卫 + 领域工具注册。 */
+/** 后端内核唯一入口：globalThis 单例 + 版本守卫 + in-flight 去重（冷启动并发只启一个）。 */
 export async function getKernel(): Promise<Kernel> {
   const g = globalThis as GlobalWithKernel;
   if (
-    !g.__SHIZURAK_KERNEL__ ||
-    g.__SHIZURAK_KERNEL_VERSION__ !== KERNEL_VERSION
+    g.__SHIZURAK_KERNEL__ &&
+    g.__SHIZURAK_KERNEL_VERSION__ === KERNEL_VERSION
   ) {
+    return g.__SHIZURAK_KERNEL__;
+  }
+  if (g.__SHIZURAK_KERNEL_PENDING__) return g.__SHIZURAK_KERNEL_PENDING__;
+  const pending = (async () => {
     await g.__SHIZURAK_KERNEL__?.stop().catch(() => {});
     const kernel = createBackendKernel();
     await kernel.start();
     registerDomainTools(kernel.context.require("ai.tools"));
     g.__SHIZURAK_KERNEL__ = kernel;
     g.__SHIZURAK_KERNEL_VERSION__ = KERNEL_VERSION;
+    return kernel;
+  })();
+  g.__SHIZURAK_KERNEL_PENDING__ = pending;
+  try {
+    return await pending;
+  } finally {
+    g.__SHIZURAK_KERNEL_PENDING__ = undefined;
   }
-  return g.__SHIZURAK_KERNEL__;
 }
 
 export { CANNED_POSTS } from "@/kernel/tools/domain";

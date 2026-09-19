@@ -25,8 +25,10 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // 成本三重闸①：Redis 固定窗口（单 IP 10/min）。fail-open，无 Redis 放行。
+  // IP 键优先取代理注入的 x-real-ip；否则取 XFF 最右段（客户端不可伪造自增段）。
+  const xff = req.headers.get("x-forwarded-for");
   const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+    req.headers.get("x-real-ip") ?? xff?.split(",").pop()?.trim() ?? "local";
   const rl = await rateLimit(`chat:${ip}`, 10, 60);
   if (!rl.ok) {
     return new Response(JSON.stringify({ error: "rate_limited" }), {
