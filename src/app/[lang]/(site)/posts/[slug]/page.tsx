@@ -1,4 +1,5 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ViewTransition } from "react";
@@ -28,6 +29,25 @@ const AI_LABEL: Record<string, string> = {
   assisted: "AI 辅助",
   generated: "AI 生成 + 人工审核",
 };
+
+export async function generateMetadata({
+  params,
+}: PageProps<"/[lang]/posts/[slug]">): Promise<Metadata> {
+  const { slug, lang } = await params;
+  const post = await getPostBySlug(slug, lang);
+  if (!post) return { title: "shizurak" };
+  const og = `/api/og?title=${encodeURIComponent(post.title)}&sub=${encodeURIComponent(post.summary ?? "")}`;
+  return {
+    title: `${post.title} · shizurak`,
+    description: post.summary ?? undefined,
+    openGraph: {
+      title: post.title,
+      description: post.summary ?? undefined,
+      images: [og],
+    },
+    twitter: { card: "summary_large_image", images: [og] },
+  };
+}
 
 export default async function PostPage({
   params,

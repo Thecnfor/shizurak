@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -50,6 +51,10 @@ export const posts = pgTable(
   (t) => [
     uniqueIndex("posts_slug_locale_ux").on(t.slug, t.locale),
     index("posts_status_published_ix").on(t.status, t.publishedAt),
+    // 搜索 v1：pg_trgm 模糊索引（中英文均适用；tsvector 对中文无分词不采）
+    index("posts_title_trgm_ix").using("gin", sql`title gin_trgm_ops`),
+    index("posts_summary_trgm_ix").using("gin", sql`summary gin_trgm_ops`),
+    index("posts_content_trgm_ix").using("gin", sql`content_md gin_trgm_ops`),
   ],
 );
 

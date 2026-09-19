@@ -23,6 +23,11 @@ type Labels = {
   title: string;
   placeholder: string;
   dock: string;
+  error: string;
+  approve: string;
+  reject: string;
+  approvalTitle: string;
+  approvalDone: string;
 };
 
 function textOf(m: { parts?: { type: string; text?: string }[] }): string {
@@ -51,6 +56,68 @@ function MessageBody({ text }: { text: string }) {
         </div>
       ) : null}
     </>
+  );
+}
+
+/** L2 审批卡：AI SDK v7 流内 tool-approval-request → 用户确认/拒绝回流。 */
+function ApprovalCard({
+  // biome-ignore lint/suspicious/noExplicitAny: UIMessage part 联合类型的审批请求分支
+  request,
+  labels,
+  onRespond,
+}: {
+  // biome-ignore lint/suspicious/noExplicitAny: 同上
+  request: any;
+  labels: Labels;
+  // biome-ignore lint/suspicious/noExplicitAny: useChat addToolApprovalResponse
+  onRespond: (args: any) => void;
+}) {
+  const [done, setDone] = useState(false);
+  const input = request.toolCall?.input as { message?: string } | undefined;
+  const summary =
+    input?.message ?? JSON.stringify(request.toolCall?.input ?? {});
+  return (
+    <div className="mt-2 rounded-md border border-border-strong bg-bg-elevated p-3">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-accent">
+        {labels.approvalTitle} · {String(request.toolCall?.toolName ?? "tool")}
+      </p>
+      <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted">
+        {summary}
+      </p>
+      {request.reason ? (
+        <p className="mt-1 font-mono text-[10px] text-[var(--warning)]">
+          {String(request.reason)}
+        </p>
+      ) : null}
+      {done ? (
+        <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-ink-faint">
+          {labels.approvalDone}
+        </p>
+      ) : (
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              onRespond({ id: request.approvalId, approved: true });
+              setDone(true);
+            }}
+            className="rounded-sm border border-border-strong bg-surface px-3 py-1 text-xs text-accent hover:bg-surface-hover"
+          >
+            {labels.approve}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onRespond({ id: request.approvalId, approved: false });
+              setDone(true);
+            }}
+            className="rounded-sm border border-border px-3 py-1 text-xs text-ink-muted hover:bg-surface-hover"
+          >
+            {labels.reject}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -89,7 +156,8 @@ function DockPanel({ labels }: { labels: Labels }) {
     [params?.lang],
   );
 
-  const { messages, status, sendMessage } = useChat({ transport });
+  const { messages, status, sendMessage, error, addToolApprovalResponse } =
+    useChat({ transport });
   const busy = status === "submitted" || status === "streaming";
   const docked = agentDock.mode === "docked";
 
@@ -157,9 +225,30 @@ function DockPanel({ labels }: { labels: Labels }) {
             }
           >
             <MessageBody text={textOf(m)} />
+            {(m.parts ?? [])
+              .filter((p) => p.type === "tool-approval-request")
+              .map(
+                // biome-ignore lint/suspicious/noExplicitAny: 审批分支 part
+                (p: any) => (
+                  <ApprovalCard
+                    key={p.approvalId}
+                    request={p}
+                    labels={labels}
+                    onRespond={(args) => addToolApprovalResponse(args)}
+                  />
+                ),
+              )}
           </div>
         ))}
         {busy ? <p className="font-mono text-xs text-ink-faint">…</p> : null}
+        {status === "error" ? (
+          <p className="mr-auto max-w-[85%] rounded-md border border-border bg-surface px-3 py-2 text-xs text-ink-muted">
+            {/* 429/网关异常等统一上屏（useChat 会把非 2xx 归入 error 态） */}
+            {error?.message === "Failed to fetch" || !error
+              ? labels.error
+              : `${labels.error}：${error.message}`}
+          </p>
+        ) : null}
       </div>
 
       <form

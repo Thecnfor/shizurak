@@ -6,13 +6,14 @@ import {
 } from "@/kernel/core";
 import { createAgentService } from "@/kernel/genui/tool-loop";
 import { genuiRouterPlugin } from "@/kernel/plugins/genui-router";
+import { jevAdapterPlugin } from "@/kernel/plugins/jev-adapter";
 import { modelAdapterPlugin } from "@/kernel/plugins/model-adapter";
 import { storesPlugin } from "@/kernel/plugins/stores";
 import { toolRegistryPlugin } from "@/kernel/plugins/tool-registry";
 import { registerDomainTools } from "@/kernel/tools/domain";
 
 /** 插件集变更时 +1（dev HMR 守卫，复用 cross-dashboard 模式） */
-export const KERNEL_VERSION = 1;
+export const KERNEL_VERSION = 2;
 
 const agentPlugin = plugin(
   (ctx: KernelContext) => {
@@ -21,7 +22,7 @@ const agentPlugin = plugin(
   {
     name: "agent",
     provide: ["ai.agent"],
-    require: ["ai.models", "ai.tools", "ai.genui"],
+    require: ["ai.models", "ai.tools", "ai.genui", "ai.jev"],
   },
 );
 
@@ -31,6 +32,7 @@ export function createBackendKernel(): Kernel {
     modelAdapterPlugin,
     toolRegistryPlugin,
     genuiRouterPlugin,
+    jevAdapterPlugin,
     storesPlugin,
     agentPlugin,
   ]);

@@ -8,7 +8,14 @@
     "projects": "项目",
     "about": "关于",
     "lab": "实验室",
+    "search": "搜索",
     "theme": "主题"
+  },
+  "search": {
+    "title": "搜索",
+    "placeholder": "搜文章标题 / 摘要 / 正文…",
+    "empty": "没有匹配结果",
+    "hint": "输入关键词开始检索（模糊匹配，中英通用）"
   },
   "footer": { "rights": "© 2026 伍泽凯 · shizurak" },
   "home": { "heroKicker": "个人站点 · 建设中" },
@@ -34,6 +41,16 @@
     "title": "AI 导览",
     "placeholder": "问我关于本站的任何事…",
     "soon": "访客 Agent 将于 M2 接入",
-    "dock": "停靠 / 浮动"
+    "dock": "停靠 / 浮动",
+    "error": "对话出错了（可能被限流或网关波动），稍后再试",
+    "approve": "确认执行",
+    "reject": "取消",
+    "approvalTitle": "需要你的确认",
+    "approvalDone": "已处理"
+  },
+  "lab": {
+    "intro": "GenUI 实验场：右下角 AI 导览（真实 LLM + 三引擎：json-render / OpenUI / RSC）。访客 Agent 用真模型回答，结构化界面即时渲染。",
+    "sharedTitle": "已分享的动态界面",
+    "sharedEmpty": "还没有分享。"
   }
 }

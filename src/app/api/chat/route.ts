@@ -2,6 +2,7 @@ import { convertToModelMessages, type UIMessage } from "ai";
 import { getKernel } from "@/kernel";
 import type { ToolExecContext } from "@/kernel/contracts/tool";
 import type { AgentService } from "@/kernel/genui/tool-loop";
+import type { JevService } from "@/kernel/plugins/jev-adapter";
 import { rateLimit } from "@/lib/server/redis";
 
 // 访客 agent 真实流式端点：内核 ai.agent（AI SDK v7 ToolLoopAgent + 真实 ARK 模型 + 领域工具）
@@ -44,6 +45,24 @@ export async function POST(req: Request): Promise<Response> {
   const agent = kernel.context.require<AgentService>("ai.agent");
   const modelMessages = await convertToModelMessages(messages);
   const last = messages[messages.length - 1];
+  const userText = (last.parts ?? [])
+    .filter((p) => p.type === "text")
+    .map((p) => ("text" in p ? p.text : ""))
+    .join("");
+
+  // System One 入口闸（Jev）：高置信越狱/敌意直接 403，不消耗生成算力；降级放行。
+  const jev = kernel.context.require<JevService>("ai.jev");
+  const verdict = await jev.gate(userText);
+  if (
+    verdict &&
+    (verdict.jailbreak > 0.85 ||
+      (verdict.risk === "hostile" && verdict.confidence > 0.85))
+  ) {
+    return new Response(
+      JSON.stringify({ error: "input_rejected", by: verdict.model }),
+      { status: 403, headers: { "content-type": "application/json" } },
+    );
+  }
   const execCtx: ToolExecContext = {
     locale: body.locale === "en" ? "en" : "zh",
     theme: typeof body.theme === "string" ? body.theme : "void",
@@ -55,10 +74,6 @@ export async function POST(req: Request): Promise<Response> {
     try {
       const { threadRepo } = await import("@/lib/db/repo/agent");
       const threadId = await threadRepo.ensure(body.id, ip);
-      const userText = (last.parts ?? [])
-        .filter((p) => p.type === "text")
-        .map((p) => ("text" in p ? p.text : ""))
-        .join("");
       await threadRepo.appendMessage({
         threadId,
         role: "user",

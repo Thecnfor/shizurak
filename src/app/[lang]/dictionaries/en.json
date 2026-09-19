@@ -8,7 +8,14 @@
     "projects": "Projects",
     "about": "About",
     "lab": "Lab",
+    "search": "Search",
     "theme": "Theme"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search titles / summaries / content…",
+    "empty": "No matching results",
+    "hint": "Type keywords to search (fuzzy, works for CJK & Latin)"
   },
   "footer": { "rights": "© 2026 Zekai Wu · shizurak" },
   "home": { "heroKicker": "Personal site · Under construction" },
@@ -34,6 +41,16 @@
     "title": "AI concierge",
     "placeholder": "Ask me anything about this site…",
     "soon": "Visitor agent arrives in M2",
-    "dock": "Dock / float"
+    "dock": "Dock / float",
+    "error": "Chat failed (possibly rate-limited or gateway hiccup), try again later",
+    "approve": "Approve",
+    "reject": "Cancel",
+    "approvalTitle": "Confirmation required",
+    "approvalDone": "Handled"
+  },
+  "lab": {
+    "intro": "GenUI playground: the AI concierge (real LLM + three engines: json-render / OpenUI / RSC). Structured UI renders inline, live.",
+    "sharedTitle": "Shared dynamic UIs",
+    "sharedEmpty": "Nothing shared yet."
   }
 }

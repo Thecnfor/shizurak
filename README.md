@@ -29,6 +29,7 @@ Most personal blogs are static sites with an AI chat widget bolted on as an afte
 | | |
 |:--|:--|
 | 🧠 | **Agent Harness native** — A DSH-Cordis microkernel (isomorphic, plugin-based, built on [`@cordisjs/core`](https://github.com/cordis-io/cordis)) powers both the **visitor-side agent** (page-aware concierge that renders UI on the fly) and the **author-side agent** (drafts, translates, summarizes, suggests replies). One kernel, two roles. |
+| ⚡ | **System One safety gate (Jev)** — [TypeSafe's](https://typesafe.ai) non-generative decision model (`@typesafe-ai/sdk`) runs *in front of* the LLM: calibrated-probability prompt-injection screening at the chat edge (403 without burning tokens), dynamic `toolApproval` risk on L2 tools, draft grounding checks. 70–500 ms, hallucination-free typed outputs; degrades open when unconfigured. |
 | 🎛 | **GenUI in three engines** — [`json-render`](https://github.com/vercel-labs/json-render) for deterministic, schema-validated, data-bound UI; [OpenUI Lang](https://github.com/thesysdev/openui) for token-efficient streaming generative UI (up to 67% fewer tokens than JSON); and **RSC** (`ai/rsc` `streamUI`) for server-rendered, zero-client-JS, SEO-indexable one-shot UI. The agent routes by intent — dashboards vs. improvisation vs. server-direct. |
 | 🎨 | **A Theme *Contract*, not themes** — A theme declares four layers: **tokens ⊕ motion ⊕ effects ⊕ GenUI skins**. The minimal theme renders the *same* agent answer as a clean Apple-style card; the space-opera theme renders it as a HUD telemetry panel. Same content, two universes. |
 | 🎬 | **Motion with discipline** — GSAP owns choreography (scroll narratives, canvas, shader timelines); Motion owns reactivity (presence, layout, gestures). One rule: never fight over the same property. Every effect ships with a three-tier degradation path. |
@@ -92,13 +93,14 @@ Framework   Next.js 16.3.5 (Cache Components · React Compiler · proxy · root-
 UI          shadcn/ui + Radix · lucide · cmdk · sonner · @number-flow/react
 Motion      GSAP 3.15 (plugins now 100% free) · Motion 13 · Lenis · hand-written WebGL shaders
 State       Zustand 5 · SWR · nuqs · React Hook Form + Zod 4
-AI          AI SDK v7 (ToolLoopAgent · toolApproval · streaming) · @ai-sdk/openai-compatible
+AI          AI SDK v7 (ToolLoopAgent · toolApproval · streaming) · @ai-sdk/openai-compatible · Jev via @typesafe-ai/sdk
 GenUI       json-render 0.21 (Vercel Labs) · OpenUI react-lang 0.3 · RSC GenUI · custom theme-bridge
 Kernel      DSH-Cordis microkernel on @cordisjs/core 3.18 (isomorphic — plugin lifecycle · DI · event bus)
 Content     Drizzle + PostgreSQL (CNPG) · unified/remark/rehype · Shiki 4 (dual-theme) · KaTeX · reading-time
-Auth        better-auth + Passkey (planned · currently API-token guarded admin routes)
+Auth        token→cookie session guarding /admin & /api/admin (better-auth + Passkey planned)
 Infra       Kubernetes + ArgoCD GitOps · OTel instrumentation · Redis rate limits · MinIO (planned)
-Planned     Mastra workflows · Mermaid · TipTap /admin editor · blog-as-MCP · pgvector semantic search
+Surface     search v1 (pg_trgm) · RSS · sitemap/robots · dynamic OG (next/og) · MCP server (/api/mcp)
+Planned     Mastra workflows · Mermaid · TipTap rich editor · pgvector semantic search
 ```
 
 ## 🚀 Quick start
@@ -140,10 +142,12 @@ This project is spec-first. Five versioned documents are the source of truth —
 - [x] **M0 — Foundation**: skeleton · four-layer theme engine + `void`/`lumen` · site shell (nav, FX, ⌘K) · i18n · View Transitions (route morph + theme circle-morph) · `<Activity>` agent dock
 - [x] **M1 — Content**: Drizzle schema on PostgreSQL · compile pipeline (unified · Shiki dual-theme · KaTeX · TOC · reading-time) · posts list/detail with shared-element morph · AI-involvement labels
 - [x] **M2 — Kernel & agent**: DSH-Cordis dual kernel on @cordisjs/core · visitor agent (AI SDK v7 ToolLoopAgent + real LLM + L0/L1/L2 tools) · GenUI json-render + OpenUI end-to-end · Redis rate limit · thread/spec persistence · `/lab` shareable GenUI
-- [x] **M3 — Author side (core)**: content agent (material → real-LLM draft) · guarded draft/publish APIs · PG workflow — ⏳ `/admin` rich editor UI · comments · analytics dashboard
-- [x] **M4 — Ship (artifacts)**: standalone Dockerfile · GitLab CI · ArgoCD/k8s manifests · OTel instrumentation · `/api/health` — ⏳ first production rollout
+- [x] **M3 — Author side**: content agent (material → real-LLM draft) · guarded draft/publish APIs · PG workflow · **minimal `/admin` CMS** (token→cookie session, Markdown editor, one-click publish) — ⏳ rich editor (TipTap) · comments · analytics dashboard
+- [x] **M4 — Ship (artifacts)**: standalone Dockerfile · GitLab CI · ArgoCD/k8s manifests · OTel instrumentation · `/api/health`(+`/live`) — ⏳ first production rollout
+- [x] **Content surface**: search v1 (pg_trgm fuzzy, CJK+Latin, `/search`) · RSS (`/feed.xml`) · sitemap/robots · dynamic OG images — semantic search v2 (pgvector) planned
+- [x] **Harness completeness**: L2 approval loop via AI SDK v7 `toolApproval` (in-stream approval-request → dock confirm card → execute) · **blog-as-MCP** (`/api/mcp`, official SDK, read-only content tools) · reserved themes `terminal` & `paper` proving the four-layer contract
 
-**Later**: semantic search v2 (pgvector) · blog-as-MCP · English translation pipeline · reserved themes (terminal/paper/cyber) · Mastra workflows · Lighthouse CI budgets
+**Later**: semantic search v2 (pgvector) · English translation pipeline · rich TipTap editor · Mastra workflows · Lighthouse CI budgets · Waline comments
 
 ## 🤝 Contributing
 

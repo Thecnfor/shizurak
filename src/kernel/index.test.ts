@@ -59,6 +59,7 @@ describe("后端 DSH-Cordis 内核（端到端，AI SDK v7 ToolLoopAgent）", ()
       "ai.models",
       "ai.tools",
       "ai.genui",
+      "ai.jev",
       "spec.store",
       "thread.store",
       "ai.agent",

@@ -12,7 +12,8 @@ import zhJson from "./dictionaries/zh.json";
 export type Dictionary = typeof zhJson;
 
 export async function getDictionary(): Promise<Dictionary> {
-  const locale = await lang();
+  const raw = await lang();
+  const locale = typeof raw === "string" ? raw : "";
   if (!hasLocale(locale)) notFound();
   return locale === "en" ? (enJson as Dictionary) : zhJson;
 }
