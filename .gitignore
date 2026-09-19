@@ -49,3 +49,4 @@ test-results/
 # visual companion sessions
 .superpowers/
 .qoder/
+!.env.example
