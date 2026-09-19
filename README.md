@@ -29,6 +29,7 @@ Most personal blogs are static sites with an AI chat widget bolted on as an afte
 | | |
 |:--|:--|
 | 🧠 | **Agent Harness native** — A DSH-Cordis microkernel (isomorphic, plugin-based, built on [`@cordisjs/core`](https://github.com/cordis-io/cordis)) powers both the **visitor-side agent** (page-aware concierge that renders UI on the fly) and the **author-side agent** (drafts, translates, summarizes, suggests replies). One kernel, two roles. |
+| ⚡ | **System One safety gate (Jev)** — [TypeSafe's](https://typesafe.ai) non-generative decision model (`@typesafe-ai/sdk`) runs *in front of* the LLM: calibrated-probability prompt-injection screening at the chat edge (403 without burning tokens), dynamic `toolApproval` risk on L2 tools, draft grounding checks. 70–500 ms, hallucination-free typed outputs; degrades open when unconfigured. |
 | 🎛 | **GenUI in three engines** — [`json-render`](https://github.com/vercel-labs/json-render) for deterministic, schema-validated, data-bound UI; [OpenUI Lang](https://github.com/thesysdev/openui) for token-efficient streaming generative UI (up to 67% fewer tokens than JSON); and **RSC** (`ai/rsc` `streamUI`) for server-rendered, zero-client-JS, SEO-indexable one-shot UI. The agent routes by intent — dashboards vs. improvisation vs. server-direct. |
 | 🎨 | **A Theme *Contract*, not themes** — A theme declares four layers: **tokens ⊕ motion ⊕ effects ⊕ GenUI skins**. The minimal theme renders the *same* agent answer as a clean Apple-style card; the space-opera theme renders it as a HUD telemetry panel. Same content, two universes. |
 | 🎬 | **Motion with discipline** — GSAP owns choreography (scroll narratives, canvas, shader timelines); Motion owns reactivity (presence, layout, gestures). One rule: never fight over the same property. Every effect ships with a three-tier degradation path. |
@@ -92,7 +93,7 @@ Framework   Next.js 16.3.5 (Cache Components · React Compiler · proxy · root-
 UI          shadcn/ui + Radix · lucide · cmdk · sonner · @number-flow/react
 Motion      GSAP 3.15 (plugins now 100% free) · Motion 13 · Lenis · hand-written WebGL shaders
 State       Zustand 5 · SWR · nuqs · React Hook Form + Zod 4
-AI          AI SDK v7 (ToolLoopAgent · toolApproval · streaming) · @ai-sdk/openai-compatible
+AI          AI SDK v7 (ToolLoopAgent · toolApproval · streaming) · @ai-sdk/openai-compatible · Jev via @typesafe-ai/sdk
 GenUI       json-render 0.21 (Vercel Labs) · OpenUI react-lang 0.3 · RSC GenUI · custom theme-bridge
 Kernel      DSH-Cordis microkernel on @cordisjs/core 3.18 (isomorphic — plugin lifecycle · DI · event bus)
 Content     Drizzle + PostgreSQL (CNPG) · unified/remark/rehype · Shiki 4 (dual-theme) · KaTeX · reading-time

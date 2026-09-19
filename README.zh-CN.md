@@ -119,6 +119,7 @@ UI     shadcn/ui 4.21 + Radix · lucide · cmdk · sonner · @number-flow/react
 动效   GSAP 3.15（全插件）· motion 13 · Lenis · 自研 WebGL shader 特效层
 状态   Zustand 5 · SWR · nuqs · React Hook Form + Zod 4
 AI     AI SDK v7（ToolLoopAgent · 流式）· @ai-sdk/openai-compatible ✅
+       Jev（TypeSafe System One，@typesafe-ai/sdk）✅ — 入口注入闸 / L2 动态审批风险 / 草稿质检，无 key 降级放行
        json-render 0.21 ✅ · OpenUI react-lang 0.3 ✅ · theme-bridge ✅ · RSC GenUI（ai/rsc streamUI）⏳
        Cordis 微内核（@cordisjs/core 3.18）✅
        → 模型经 LiteLLM/Ark 网关（预算熔断 + Redis 限流）
