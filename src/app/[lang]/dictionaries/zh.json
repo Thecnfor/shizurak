@@ -28,5 +28,12 @@
     "nav": "导航",
     "theme": "主题",
     "empty": "无匹配结果"
+  },
+  "agentDock": {
+    "open": "AI 导览",
+    "title": "AI 导览",
+    "placeholder": "问我关于本站的任何事…",
+    "soon": "访客 Agent 将于 M2 接入",
+    "dock": "停靠 / 浮动"
   }
 }

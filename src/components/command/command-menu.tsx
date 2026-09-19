@@ -3,6 +3,7 @@
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { withThemeViewTransition } from "@/lib/motion/vt";
 import { useThemeStore } from "@/stores/theme-store";
 import { useUIShellStore } from "@/stores/ui-shell-store";
 import { themeList } from "@/themes/registry";
@@ -104,7 +105,7 @@ export function CommandMenu({
                 key={t.meta.id}
                 value={`theme ${t.meta.name} ${t.meta.nameEn}`}
                 onSelect={() => {
-                  setTheme(t.meta.id);
+                  withThemeViewTransition(() => setTheme(t.meta.id));
                   setOpen(false);
                 }}
                 className={itemClass}

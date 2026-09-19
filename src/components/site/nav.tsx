@@ -15,6 +15,7 @@ export async function SiteNav({ lang }: { lang: string }) {
       <nav className="mx-auto flex h-14 max-w-[var(--container-max)] items-center justify-between px-6">
         <Link
           href={`/${lang}`}
+          transitionTypes={["nav-back"]}
           className="font-mono text-sm tracking-widest text-ink"
         >
           SHIZURAK
@@ -24,6 +25,7 @@ export async function SiteNav({ lang }: { lang: string }) {
             <Link
               key={l.href}
               href={l.href}
+              transitionTypes={["nav-forward"]}
               className="text-sm text-ink-muted hover:text-ink"
             >
               {l.label}

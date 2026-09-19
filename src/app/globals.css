@@ -27,8 +27,23 @@
   --radius-lg: var(--radius-lg);
 }
 
+/* 个性化色相旋转：注册为 <angle> → 色相变化本身可 transition 动画（设计规范 §1.5） */
+@property --hue-rotate {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
 html {
   color-scheme: dark light;
+  scroll-behavior: smooth;
+}
+
+/* 浮层派生令牌（设计规范 §11）：跨主题一致的阴影/焦点环 */
+:root {
+  --hue-rotate: 0deg;
+  --overlay-shadow: var(--shadow-md);
+  --focus-ring-color: var(--accent);
 }
 
 body {
@@ -40,8 +55,200 @@ body {
     color 0.2s ease;
 }
 
+/* 标题平衡换行（苹果/克制排印） */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+:focus-visible {
+  outline-color: var(--focus-ring-color);
+}
+
+/* ── View Transitions（原生跨页/跨主题 morph，设计规范 §6.4）── */
+::view-transition {
+  pointer-events: none; /* 转场期间不吞点击 */
+}
+/* 星空特效层跨页持续：背景不动、内容变 */
+[data-fx="starfield"],
+[data-fx="fallback"] {
+  view-transition-name: fx-root;
+}
+::view-transition-old(fx-root),
+::view-transition-new(fx-root) {
+  animation: none;
+}
+::view-transition-old(fx-root) {
+  display: none;
+}
+
+/* 方向性导航（<Link transitionTypes>） */
+::view-transition-old(.nav-forward) {
+  animation: vt-out-left 320ms ease-in-out both;
+}
+::view-transition-new(.nav-forward) {
+  animation: vt-in-right 320ms ease-in-out both;
+}
+::view-transition-old(.nav-back) {
+  animation: vt-out-right 320ms ease-in-out both;
+}
+::view-transition-new(.nav-back) {
+  animation: vt-in-left 320ms ease-in-out both;
+}
+@keyframes vt-out-left {
+  to {
+    opacity: 0;
+    translate: -48px 0;
+  }
+}
+@keyframes vt-in-right {
+  from {
+    opacity: 0;
+    translate: 48px 0;
+  }
+}
+@keyframes vt-out-right {
+  to {
+    opacity: 0;
+    translate: 48px 0;
+  }
+}
+@keyframes vt-in-left {
+  from {
+    opacity: 0;
+    translate: -48px 0;
+  }
+}
+
+/* CSS 原生滚动进度条（零 JS，lumen 承诺）：加 .scroll-progress 即可用 */
+.scroll-progress {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: 2px;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  scale: 0 1;
+  z-index: 20;
+  pointer-events: none;
+  animation: scroll-progress linear both;
+  animation-timeline: scroll(root block);
+}
+@keyframes scroll-progress {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+/* 长列表视口外跳过渲染（文章列表/时间线） */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px;
+}
+
+/* 编译后正文排版（无 @tailwindcss/typography，用令牌手写） */
+.post-body {
+  max-width: 68ch;
+  line-height: 1.75;
+  color: var(--ink-secondary);
+}
+.post-body h2,
+.post-body h3 {
+  color: var(--ink);
+  font-weight: 600;
+  margin-block: 1.6em 0.6em;
+  scroll-margin-top: 5rem;
+}
+.post-body h2 {
+  font-size: var(--text-h2-size);
+}
+.post-body h3 {
+  font-size: var(--text-h3-size);
+}
+.post-body p {
+  margin-block: 0.9em;
+}
+.post-body ul {
+  list-style: disc;
+  padding-left: 1.4em;
+  margin-block: 0.9em;
+}
+.post-body ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+  margin-block: 0.9em;
+}
+.post-body a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.post-body :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface-hover);
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-sm);
+}
+.post-body pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  overflow-x: auto;
+  margin-block: 1.2em;
+}
+.post-body pre code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+.post-body blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 1em;
+  color: var(--ink-muted);
+  margin-block: 1em;
+}
+.post-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: 1.2em;
+}
+.post-body th,
+.post-body td {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.6em;
+  text-align: left;
+}
+
+/* Shiki 双主题：随 data-mode 切换 token 颜色（defaultColor:false 产物） */
+.shiki,
+.shiki code,
+.shiki pre {
+  background: transparent !important;
+}
+.shiki span {
+  color: var(--shiki-light);
+}
+[data-mode="dark"] .shiki span {
+  /* biome-ignore lint/complexity/noImportantStyles: 双主题代码高亮需覆盖内联 light 变量 */
+  color: var(--shiki-dark) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   body {
     transition: none;
+  }
+  /* 一键静态化所有 ViewTransition（定位/缩放清零，保留必要 opacity） */
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced-motion 需以 !important 覆盖 .nav-* 具类动画（官方 View Transitions 配方） */
+    animation: none !important;
   }
 }
