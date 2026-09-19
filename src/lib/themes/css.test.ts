@@ -16,14 +16,14 @@ describe("themeVarsCss", () => {
     );
   });
   it("令牌转 kebab-case 变量", () => {
-    expect(css).toContain("--bg: #05060a");
-    expect(css).toContain("--ink-secondary: #aab3c0");
-    expect(css).toContain("--radius-sm: 2px");
+    expect(css).toContain("--bg: #07070a");
+    expect(css).toContain("--ink-secondary: #a9b3bc");
+    expect(css).toContain("--radius-sm: 0px");
     expect(css).toContain("--text-h1-size:");
   });
   it("accent 走 oklch 色相旋转钩子", () => {
     expect(css).toContain(
-      "oklch(from #5eead4 l c calc(h + var(--hue-rotate, 0)))",
+      "oklch(from #cfe4ff l c calc(h + var(--hue-rotate, 0)))",
     );
   });
 });
