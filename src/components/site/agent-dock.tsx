@@ -84,6 +84,11 @@ function ApprovalCard({
       <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted">
         {summary}
       </p>
+      {request.reason ? (
+        <p className="mt-1 font-mono text-[10px] text-[var(--warning)]">
+          {String(request.reason)}
+        </p>
+      ) : null}
       {done ? (
         <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-ink-faint">
           {labels.approvalDone}

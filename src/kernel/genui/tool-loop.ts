@@ -8,6 +8,7 @@ import {
 } from "ai";
 import type { ToolExecContext } from "@/kernel/contracts/tool";
 import type { KernelContext } from "@/kernel/core";
+import type { JevService } from "@/kernel/plugins/jev-adapter";
 import type { ModelsService } from "@/kernel/plugins/model-adapter";
 import type { ToolsService } from "@/kernel/plugins/tool-registry";
 import { buildGenUiSpecPrompt } from "./routing";
@@ -57,6 +58,7 @@ export function createAgentService(ctx: KernelContext): AgentService {
   const models = ctx.require<ModelsService>("ai.models");
   const tools = ctx.require<ToolsService>("ai.tools");
   const genui = ctx.require<{ routingPrompt(): string }>("ai.genui");
+  const jev = ctx.require<JevService>("ai.jev");
 
   // 内核工具 → AI SDK 工具（含 execute 副作用捕获）；L2 经 SDK 审批层后直接 execute。
   function buildAgent(
@@ -66,7 +68,13 @@ export function createAgentService(ctx: KernelContext): AgentService {
   ) {
     const toolOutputs: AgentRunResult["toolOutputs"] = [];
     const toolSet: Record<string, ToolSet[string]> = {};
-    const toolApproval: Record<string, "user-approval"> = {};
+    const toolApproval: Record<
+      string,
+      // biome-ignore lint/suspicious/noExplicitAny: 动态工具集的审批函数入参
+      (
+        input: any,
+      ) => Promise<"user-approval" | { status: "denied"; reason: string }>
+    > = {};
     for (const d of tools.list()) {
       toolSet[d.id] = bridgeTool({
         description: d.description,
@@ -87,12 +95,25 @@ export function createAgentService(ctx: KernelContext): AgentService {
           throw new Error(r.status === "error" ? r.error : "needs-approval");
         },
       });
-      if (d.level === "L2") toolApproval[d.id] = "user-approval";
+      if (d.level === "L2") {
+        // System One 风险闸：高置信敌意 → denied（附理由，省人工）；其余 → user-approval。
+        // 降级（无 key/网关故障）保守回 user-approval —— 红线不变：永不自动执行副作用。
+        toolApproval[d.id] = async (input: { message?: string }) => {
+          const verdict = await jev.gate(input?.message ?? "");
+          if (verdict && verdict.risk === "hostile" && verdict.confidence > 0.8)
+            return {
+              status: "denied" as const,
+              reason: "jev-gate: 风险判定 hostile（置信度已校准），已自动拒绝",
+            };
+          return "user-approval" as const;
+        };
+      }
     }
     const agent = new ToolLoopAgent({
       model: models.chat() as LanguageModel,
       tools: toolSet as ToolSet,
-      toolApproval: toolApproval as never,
+      // biome-ignore lint/suspicious/noExplicitAny: 动态审批映射对 ToolLoopAgent 泛型的越界（运行时即 v7 toolApproval 契约）
+      toolApproval: toolApproval as any,
       instructions:
         `${system ?? ""}\n${genui.routingPrompt()}\n${buildGenUiSpecPrompt()}`.trim(),
       stopWhen: stepCountIs(maxSteps),
