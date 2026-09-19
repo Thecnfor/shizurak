@@ -33,8 +33,11 @@ export async function rateLimit(
   if (!r) return { ok: true }; // 无 Redis → 放行（开发/降级）
   try {
     const k = `blog:rl:${key}`;
-    const n = await r.incr(k);
-    if (n === 1) await r.expire(k, windowSec);
+    // MULTI 原子化 INCR+EXPIRE（NX 只在无 TTL 时设），消除“创建后崩溃 → 永久锁死”窗口
+    const res = (await r.multi().incr(k).expire(k, windowSec, "NX").exec()) as
+      | [Error | null, unknown][]
+      | null;
+    const n = Number(res?.[0]?.[1] ?? 0);
     if (n > limit) {
       const ttl = await r.ttl(k);
       return { ok: false, retryAfter: ttl > 0 ? ttl : windowSec };

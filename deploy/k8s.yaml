@@ -14,17 +14,18 @@ spec:
     spec:
       containers:
         - name: web
-          # tag 由 argocd-apps GitOps 单独 bump（不在此硬编）
-          image: harbor.app.xrak.top/core-ui/shizurak:latest
+          # 占位 tag：真实部署由 argocd-apps 仓库 bump 具体 SHA/版本（:latest + selfHeal 会抵消金丝雀）
+          image: harbor.app.xrak.top/core-ui/shizurak:v0.0.0
           ports:
             - containerPort: 3000
           envFrom:
             - secretRef: { name: shizurak-env }
+          # 就绪看依赖（DB 故障 → 摘流量）；存活只看进程（DB 抖动不得引发重启风暴）
           readinessProbe:
             httpGet: { path: /api/health, port: 3000 }
             initialDelaySeconds: 5
           livenessProbe:
-            httpGet: { path: /api/health, port: 3000 }
+            httpGet: { path: /api/health/live, port: 3000 }
             initialDelaySeconds: 15
           resources:
             requests: { cpu: 50m, memory: 256Mi }

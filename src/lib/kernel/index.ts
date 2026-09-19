@@ -39,9 +39,10 @@ export function createClientKernel(): Kernel {
 interface GlobalWithClientKernel {
   __SHIZURAK_CLIENT_KERNEL__?: Kernel;
   __SHIZURAK_CLIENT_KERNEL_VERSION__?: number;
+  __SHIZURAK_CLIENT_KERNEL_READY__?: Promise<Kernel>;
 }
 
-/** 前端内核单例（globalThis + 版本守卫，HMR 安全）+ 竞速就绪。 */
+/** 前端内核单例（globalThis + 版本守卫，HMR 安全）+ 就绪去重；失败不缓存，下次可重试。 */
 export function getClientKernel(): Kernel {
   const g = globalThis as GlobalWithClientKernel;
   if (
@@ -50,24 +51,26 @@ export function getClientKernel(): Kernel {
   ) {
     g.__SHIZURAK_CLIENT_KERNEL__ = createClientKernel();
     g.__SHIZURAK_CLIENT_KERNEL_VERSION__ = CLIENT_KERNEL_VERSION;
+    g.__SHIZURAK_CLIENT_KERNEL_READY__ = undefined; // 版本漂移后重置就绪态
   }
   return g.__SHIZURAK_CLIENT_KERNEL__;
 }
 
-const readyPromise: Promise<Kernel> | undefined =
-  typeof window === "undefined"
-    ? undefined
-    : (async () => {
-        const k = getClientKernel();
-        if (!k.started) await k.start();
-        return k;
-      })();
-
 export function whenClientKernelReady(): Promise<Kernel> {
-  return (
-    readyPromise ??
-    getClientKernel()
-      .start()
-      .then(() => getClientKernel())
-  );
+  const g = globalThis as GlobalWithClientKernel;
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("client kernel is browser-only"));
+  }
+  if (!g.__SHIZURAK_CLIENT_KERNEL_READY__) {
+    g.__SHIZURAK_CLIENT_KERNEL_READY__ = (async () => {
+      const k = getClientKernel();
+      if (!k.started) await k.start();
+      return k;
+    })().catch((err) => {
+      // 不永久缓存失败：清空让下一次调用可重试
+      g.__SHIZURAK_CLIENT_KERNEL_READY__ = undefined;
+      throw err;
+    });
+  }
+  return g.__SHIZURAK_CLIENT_KERNEL_READY__;
 }

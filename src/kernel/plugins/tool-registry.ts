@@ -77,10 +77,12 @@ export const toolRegistryPlugin = plugin(
           const output = await d.execute!(parsed.data, execCtx);
           return { status: "ok", id, output };
         } catch (err) {
+          console.error(`[tool:${id}] execute failed`, err);
           return {
             status: "error",
             id,
-            error: err instanceof Error ? err.message : String(err),
+            // 不回传原始内部错误（会进模型上下文/可能回流 UI）；细节进服务日志
+            error: "tool execution failed",
           };
         }
       },

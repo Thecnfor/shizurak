@@ -30,6 +30,7 @@ e2e:
 image:
   stage: build
   image: gcr.io/kaniko-project/executor:debug
+  before_script: []  # kaniko 镜像无 node/corepack，跳过默认安装步骤
   script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"harbor.app.xrak.top\":{\"auth\":\"$(printf '%s:%s' "$HARBOR_USER" "$HARBOR_PASS" | base64)\"}}" > /kaniko/.docker/config.json

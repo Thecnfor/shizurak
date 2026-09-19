@@ -1,8 +1,32 @@
 import { revalidateTag } from "next/cache";
 import { isSpec } from "@/lib/genui/parse-spec";
+import { rateLimit } from "@/lib/server/redis";
+
+const MAX_BODY_BYTES = 64 * 1024; // spec 均为小体积 JSON，封顶防滥用
 
 // 保存 GenUI spec → genui_specs（分享用），返回 id。
+// 公开写入口 → 限流（单 IP 30/小时）+ 体积帽；内容仅经 isSpec 校验后作数据存库（非 HTML 注入面）。
 export async function POST(req: Request): Promise<Response> {
+  const ip =
+    req.headers.get("x-real-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() ??
+    "local";
+  const rl = await rateLimit(`spec:${ip}`, 30, 3600);
+  if (!rl.ok) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(rl.retryAfter ?? 3600),
+      },
+    });
+  }
+  if ((Number(req.headers.get("content-length")) || 0) > MAX_BODY_BYTES) {
+    return new Response(JSON.stringify({ error: "payload_too_large" }), {
+      status: 413,
+      headers: { "content-type": "application/json" },
+    });
+  }
   let body: {
     kind?: string;
     spec?: unknown;
@@ -12,7 +36,14 @@ export async function POST(req: Request): Promise<Response> {
     threadId?: string;
   };
   try {
-    body = await req.json();
+    const text = await req.text();
+    if (text.length > MAX_BODY_BYTES) {
+      return new Response(JSON.stringify({ error: "payload_too_large" }), {
+        status: 413,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    body = JSON.parse(text);
   } catch {
     return new Response("Invalid JSON", { status: 400 });
   }

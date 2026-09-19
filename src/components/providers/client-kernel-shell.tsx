@@ -43,7 +43,12 @@ export function ClientKernelShell({ children }: { children: ReactNode }) {
           level: "L1",
           reversible: true,
           schema: z.object({ href: z.string() }),
-          execute: ({ href }) => router.push(href),
+          // 只放行应用内路径（防协议相对/伪协议目标被推入路由）
+          execute: ({ href }) => {
+            if (href.startsWith("/") && !href.startsWith("//")) {
+              router.push(href);
+            }
+          },
         });
       }
       const pc = k.context.require<PageContextService>("pageContext");

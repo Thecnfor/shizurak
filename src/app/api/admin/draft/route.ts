@@ -17,8 +17,20 @@ export async function POST(req: Request): Promise<Response> {
       headers: { "content-type": "application/json" },
     });
   }
-  const draft = await generateDraft(material);
-  const created = await postsRepo.createDraft(draft);
+  const draft = await generateDraft(material).catch(() => null);
+  if (!draft) {
+    return new Response(JSON.stringify({ error: "generation_failed" }), {
+      status: 502,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  const created = await postsRepo.createDraft(draft).catch(() => null);
+  if (!created) {
+    return new Response(JSON.stringify({ error: "persist_failed" }), {
+      status: 502,
+      headers: { "content-type": "application/json" },
+    });
+  }
   return new Response(
     JSON.stringify({ ...created, title: draft.title, tags: draft.tags }),
     { status: 201, headers: { "content-type": "application/json" } },

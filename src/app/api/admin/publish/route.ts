@@ -11,7 +11,12 @@ export async function POST(req: Request): Promise<Response> {
   } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
-  if (!id || !process.env.DATABASE_URL) {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      id,
+    ) ||
+    !process.env.DATABASE_URL
+  ) {
     return new Response(JSON.stringify({ error: "bad_input" }), {
       status: 400,
       headers: { "content-type": "application/json" },

@@ -44,8 +44,18 @@ export function registerDomainTools(tools: ToolsService): void {
     description: "站点统计（文章数）",
     parameters: z.object({}),
     execute: async () => {
-      const r = await queryPosts("");
-      return { posts: r.count };
+      if (process.env.DATABASE_URL) {
+        // 真数：不被列表 limit(10) 遮蔽
+        const { and, count, eq, isNull } = await import("drizzle-orm");
+        const { getDb } = await import("@/lib/db/client");
+        const { posts } = await import("@/lib/db/schema");
+        const [row] = await getDb()
+          .select({ n: count() })
+          .from(posts)
+          .where(and(eq(posts.status, "published"), isNull(posts.deletedAt)));
+        return { posts: Number(row?.n ?? 0) };
+      }
+      return { posts: CANNED_POSTS.length };
     },
   });
 

@@ -60,9 +60,17 @@ export const specRepo = {
   },
 };
 
+// 局部 UUID 守卫（uuid 列的非法格式会令 Postgres 抛 22P02）
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(v: string): boolean {
+  return UUID_RE.test(v);
+}
+
 export const threadRepo = {
   async ensure(threadId: string | undefined, visitorHash: string | undefined) {
-    if (threadId) return threadId;
+    // 只接受 UUID 形状的既有线程；其余一律新建（防写入他人/任意键线程）
+    if (threadId && isUuid(threadId)) return threadId;
     const [row] = await getDb()
       .insert(agentThreads)
       .values({ kind: "visitor", visitorHash: visitorHash ?? null })

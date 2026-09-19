@@ -23,6 +23,11 @@ export async function getCachedSpec(
   "use cache";
   cacheLife("hours");
   cacheTag(`spec:${id}`, "specs");
+  // 非 UUID 直接视为不存在（否则 Postgres 对 uuid 比较抛 22P02 → 500）
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  )
+    return null;
   const { specRepo } = await import("../repo/agent");
   const row = await specRepo.load(id);
   if (!row || !row.shared) return null;
