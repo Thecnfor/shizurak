@@ -45,3 +45,6 @@ next-env.d.ts
 src/app/theme-vars.generated.css
 playwright-report/
 test-results/
+
+# visual companion sessions
+.superpowers/
