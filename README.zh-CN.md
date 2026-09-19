@@ -5,9 +5,11 @@
 **Agent Harness 原生的个人博客。**
 不是「静态站 + 挂个聊天窗」——博客本身就是一座 AI 工作台。
 
-微内核编排双 GenUI 引擎 · 四层主题契约驱动每一个像素与每一毫秒动效 · Agent-CMS 与你并肩写作。
+微内核编排三 GenUI 引擎 · 四层主题契约驱动每一个像素与每一毫秒动效 · Agent-CMS 与你并肩写作。
 
 *SpaceX 太空歌剧 × OpenAI/苹果极简 —— 是可互换的完整体验，不是换配色。*
+
+**🛰 状态（2026-09）**：M0–M4 核心已交付——双层内核（真 cordis）· 真实 LLM 访客 Agent · GenUI 双引擎端到端 · PostgreSQL 内容管线 · 作者内容 Agent · 部署产物就绪。全部门禁绿。
 
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [规范文档](./docs/specs/) · [路线图](#-路线图)
 
@@ -86,12 +88,12 @@
 ```
 访客/作者 ─▶ Next.js 16.3.5（Cache Components · React Compiler · i18n [lang] 路由）
              ├─ 主题引擎：四层契约（void / lumen / 预留…）
-             ├─ DSH-Cordis 双层内核
-             │    后端：model-adapter→LiteLLM · tool-registry(+官方 MCP) · mastra-engine
-             │          content-agent · spec-store · thread-store
+             ├─ DSH-Cordis 双层内核（基于 @cordisjs/core）
+             │    后端：model-adapter→LLM 网关 · tool-registry · agent-loop（AI SDK v7 ToolLoopAgent）
+             │          spec-store · thread-store · PG 持久化
              │    前端：ui-actions(L0/L1/L2) · page-context · component-kit · theme-bridge
              ├─ Agent-CMS（/admin）：素材→AI 草稿→diff 审核→发布
-             └─ GenUI 双引擎：json-render（数据仪表）+ OpenUI（即兴画布）
+             └─ GenUI 三引擎（genui-router 路由）：json-render（数据仪表）+ OpenUI（即兴画布）+ RSC（服务端直出·零客户端 JS）
                     │
         CNPG(blog 库) · MinIO · Redis · LiteLLM 网关（全部 Rak 集群）
 
@@ -107,6 +109,7 @@
 | [02 · 架构规范](./docs/specs/02-architecture-spec.md) | Next 16.3.5 版本约定 · 目录结构 · DSH-Cordis 双层内核 · Agent Harness 全链路 · i18n 预适配 · 内容管线与数据模型 · 搜索/认证/评论/统计 · 渲染缓存策略 · 部署拓扑 |
 | [03 · 状态管理规范](./docs/specs/03-state-spec.md) | 六层状态模型 · 决策树 · 三个 Zustand store 规格 · 主题双轨制 · 动效状态铁律 · 持久化 · 反模式清单 |
 | [04 · 依赖规范](./docs/specs/04-dependency-spec.md) | 选型原则 · 全量依赖清单（版本锁定）· 前沿性核对 · 自研边界 · 包体预算 · 风险与替代 |
+| [05 · Harness 规范](./docs/specs/05-harness-spec.md) | 统一契约——微内核插件/Service/事件规则 · **三引擎 GenUI 抽象** · RSC GenUI 通道与 Data-Stream/RSC 传输互斥律 · 引擎路由表 · L0/L1/L2 权限 · 五重成本闸 · page-context 上下文栈 · 可观测 |
 
 ## 五、技术阵容速览
 
@@ -115,14 +118,18 @@
 UI     shadcn/ui 4.21 + Radix · lucide · cmdk · sonner · @number-flow/react
 动效   GSAP 3.15（全插件）· motion 13 · Lenis · 自研 WebGL shader 特效层
 状态   Zustand 5 · SWR · nuqs · React Hook Form + Zod 4
-AI     AI SDK v7（ToolLoopAgent）· Mastra 1.67 · @ai-sdk/mcp（官方 MCP）
-       json-render 0.21 · OpenUI（react-lang 0.3）· Cordis 4.0 (vendor)
-       → 模型经 LiteLLM 网关（集群，零密钥，预算熔断）
-内容   Drizzle + PostgreSQL（CNPG）· MinIO · Shiki 4 · KaTeX · Mermaid 12 · TipTap 3
-i18n   app/[lang] + proxy 协商 + next/root-params（官方最佳实践）
-认证   better-auth 1.7 + Passkey
-运维   ArgoCD GitOps · OTel → Loki/Tempo/Grafana · Playwright + Lighthouse CI 门禁
+AI     AI SDK v7（ToolLoopAgent · 流式）· @ai-sdk/openai-compatible ✅
+       json-render 0.21 ✅ · OpenUI react-lang 0.3 ✅ · theme-bridge ✅ · RSC GenUI（ai/rsc streamUI）⏳
+       Cordis 微内核（@cordisjs/core 3.18）✅
+       → 模型经 LiteLLM/Ark 网关（预算熔断 + Redis 限流）
+内容   Drizzle + PostgreSQL（CNPG）✅ · unified/remark/rehype + Shiki 4 双主题 + KaTeX ✅
+       Mermaid 12 · TipTap 3 编辑器 · MinIO ⏳
+i18n   app/[lang] + proxy 协商 + next/root-params（官方最佳实践）✅
+认证   better-auth + Passkey ⏳（当前：API token 守卫的作者接口）
+运维   standalone Dockerfile ✅ · GitLab CI ✅ · ArgoCD/k8s 清单 ✅ · OTel instrumentation ✅
 ```
+
+> ✅ = 仓内已落地并可运行 · ⏳ = 路线图内（规范已定义，未实现）
 
 ## 六、仓库结构
 
@@ -130,22 +137,26 @@ i18n   app/[lang] + proxy 协商 + next/root-params（官方最佳实践）
 shizurak/
 ├── README.md              # 英文主版（开源门面）
 ├── README.zh-CN.md        # 中文版（本文件，含需求全文）
-├── docs/specs/            # 四份规范（实现唯一依据）
+├── docs/specs/            # 五份规范（实现唯一依据）
 ├── src/                   # 应用（结构与边界见架构规范 §3）
-├── scripts/               # ingest / export-content / theme-check
-└── ...
+├── src/kernel + src/lib/kernel  # DSH-Cordis 双层内核（插件化）
+├── scripts/               # seed / gen-theme-css / theme-check
+├── deploy/                # k8s + ArgoCD 清单
+└── ...（Dockerfile / .gitlab-ci.yml / drizzle.config.ts）
 ```
 
 ## 七、路线图
 
-| 阶段 | 内容 |
-|------|------|
-| **M0 · 地基** | 工程骨架（Next 16.3.5 + Tailwind 4 + Biome + 测试门禁）· 主题引擎 + void/lumen · 站点壳（导航/特效层/⌘K）· i18n 路由预适配 |
-| **M1 · 内容** | Drizzle schema + 迁移 · Agent-CMS（编辑器/diff 审核/发布）· 内容管线（Shiki/KaTeX/Mermaid/OG）· ingest CLI · RSS/sitemap/搜索 v1 |
-| **M2 · 内核** | Cordis 双层内核 · 访客 Agent（chat + ui-actions + page-context）· GenUI 双引擎 + theme-bridge · 限流与成本闸 |
-| **M3 · 作者侧** | content-agent 工作流（素材→草稿）· 评论增强 · 埋点 + /admin 仪表盘 · 翻译管线（en 上线） |
-| **M4 · 上线** | Dockerfile + GitLab CI + ArgoCD · 可观测接入 · 性能预算验收 · 安全审计 |
-| **Later** | 语义搜索 v2 · blog-as-MCP · 预留主题（terminal/paper/cyber） |
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| **M0 · 地基** | 工程骨架 · 主题引擎 + void/lumen · 站点壳（导航/特效层/⌘K）· i18n · View Transitions（路由转场+主题形变）· `<Activity>` 导览坞 | ✅ |
+| **M1 · 内容** | Drizzle schema + PG 迁移 · 编译管线（Shiki/KaTeX/TOC/阅读时长）· 列表/详情 + 共享元素形变 · AI 参与度标签 | ✅ |
+| **M2 · 内核** | cordis 双层内核 · 访客 Agent（真 LLM + L0/L1/L2 工具）· GenUI json-render+OpenUI 端到端 · Redis 限流 · 线程/spec 持久化 · `/lab` 分享页 | ✅ |
+| **M3 · 作者侧** | content-agent（素材→真 LLM 草稿）· 草稿/发布接口 · PG 工作流 | ✅ 核心 |
+| | `/admin` 富文本编辑器 UI · 评论增强 · 埋点仪表盘 · 英文翻译管线 | ⏳ |
+| **M4 · 上线** | standalone Dockerfile · GitLab CI · ArgoCD/k8s 清单 · OTel · /api/health | ✅ 产物 |
+| | 首次生产 rollout · Lighthouse 预算门禁 | ⏳ |
+| **Later** | 语义搜索 v2（pgvector）· blog-as-MCP · 预留主题（terminal/paper/cyber）· Mastra 工作流 | |
 
 ## 八、开发
 

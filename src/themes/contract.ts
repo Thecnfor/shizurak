@@ -97,6 +97,9 @@ export interface ThemeGenUI {
 
 export interface Theme {
   meta: ThemeMeta;
+  /** 继承另一主题 id：新主题只覆写四层中任意一层，其余从基座浅合并。
+   *  registry 加载时物化继承链，resolveTheme 收到的已是扁平结果。 */
+  extends?: string;
   tokens: Partial<Record<ThemeMode, ThemeTokens>>;
   motion: ThemeMotion;
   effects: ThemeEffects;

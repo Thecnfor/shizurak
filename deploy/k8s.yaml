@@ -1,0 +1,59 @@
+# shizurak-web 部署（架构规范 §12 · Rak 集群 k3s + Traefik + CNPG/Redis/MinIO/LiteLLM 复用）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shizurak-web
+  namespace: core-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: shizurak-web }
+  template:
+    metadata:
+      labels: { app: shizurak-web }
+    spec:
+      containers:
+        - name: web
+          # 占位 tag：真实部署由 argocd-apps 仓库 bump 具体 SHA/版本（:latest + selfHeal 会抵消金丝雀）
+          image: harbor.app.xrak.top/core-ui/shizurak:v0.0.0
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef: { name: shizurak-env }
+          # 就绪看依赖（DB 故障 → 摘流量）；存活只看进程（DB 抖动不得引发重启风暴）
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /api/health/live, port: 3000 }
+            initialDelaySeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shizurak-web
+  namespace: core-ui
+spec:
+  selector: { app: shizurak-web }
+  ports:
+    - port: 80
+      targetPort: 3000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: shizurak-web
+  namespace: core-ui
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`blog.xrak.top`)
+      kind: Rule
+      services:
+        - name: shizurak-web
+          port: 80
+  tls:
+    certResolver: default

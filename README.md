@@ -5,7 +5,7 @@
 **An agent-native personal blog.**
 Not a static site with a chatbot bolted on — the blog itself is built as an AI harness.
 
-A microkernel orchestrates two GenUI engines · a four-layer theme contract drives every pixel and every millisecond of motion · an Agent-CMS writes alongside you.
+A microkernel orchestrates three GenUI engines · a four-layer theme contract drives every pixel and every millisecond of motion · an Agent-CMS writes alongside you.
 
 *SpaceX space-opera × OpenAI/Apple minimal — as swappable experiences, not color swaps.*
 
@@ -28,8 +28,8 @@ Most personal blogs are static sites with an AI chat widget bolted on as an afte
 
 | | |
 |:--|:--|
-| 🧠 | **Agent Harness native** — A DSH-Cordis microkernel (isomorphic, plugin-based, vendored from a production system) powers both the **visitor-side agent** (page-aware concierge that renders UI on the fly) and the **author-side agent** (drafts, translates, summarizes, suggests replies). One kernel, two roles. |
-| 🎛 | **GenUI in two engines** — [`json-render`](https://json-render.dev) for deterministic, schema-validated, data-bound UI; [OpenUI Lang](https://www.openui.com) for token-efficient streaming generative UI (up to 67% fewer tokens than JSON). The agent routes by intent — dashboards vs. improvisation. |
+| 🧠 | **Agent Harness native** — A DSH-Cordis microkernel (isomorphic, plugin-based, built on [`@cordisjs/core`](https://github.com/cordis-io/cordis)) powers both the **visitor-side agent** (page-aware concierge that renders UI on the fly) and the **author-side agent** (drafts, translates, summarizes, suggests replies). One kernel, two roles. |
+| 🎛 | **GenUI in three engines** — [`json-render`](https://github.com/vercel-labs/json-render) for deterministic, schema-validated, data-bound UI; [OpenUI Lang](https://github.com/thesysdev/openui) for token-efficient streaming generative UI (up to 67% fewer tokens than JSON); and **RSC** (`ai/rsc` `streamUI`) for server-rendered, zero-client-JS, SEO-indexable one-shot UI. The agent routes by intent — dashboards vs. improvisation vs. server-direct. |
 | 🎨 | **A Theme *Contract*, not themes** — A theme declares four layers: **tokens ⊕ motion ⊕ effects ⊕ GenUI skins**. The minimal theme renders the *same* agent answer as a clean Apple-style card; the space-opera theme renders it as a HUD telemetry panel. Same content, two universes. |
 | 🎬 | **Motion with discipline** — GSAP owns choreography (scroll narratives, canvas, shader timelines); Motion owns reactivity (presence, layout, gestures). One rule: never fight over the same property. Every effect ships with a three-tier degradation path. |
 | 📝 | **Agent-CMS** — Write in Obsidian. Material flows in, the content agent produces drafts, you review diff-by-diff, publish. AI involvement is labeled on every post. |
@@ -54,7 +54,8 @@ Most personal blogs are static sites with an AI chat widget bolted on as an afte
                         │  materials→drafts→review  │ backend kernel │  │
                         │                           │  model-adapter │  │
                         │                           │  tool-registry │  │
-                        │                           │  mastra-engine │  │
+                        │                           │  agent-loop    │  │
+                        │                           │  (AI SDK v7)   │  │
                         │                           └───────┬────────┘  │
                         └───────────────────────────────────┼───────────┘
                                                             │
@@ -64,8 +65,9 @@ Most personal blogs are static sites with an AI chat widget bolted on as an afte
       content · specs          images/assets        (LiteLLM)         rate limits
       events · threads                              budget-guarded
 
-   GenUI pipeline:  intent ─▶ kernel routes ─┬─▶ json-render  (data-bound, deterministic)
-                                             └─▶ OpenUI Lang  (streaming, generative)
+   GenUI pipeline:  intent ─▶ genui-router ─┬─▶ json-render  (data-bound, deterministic)
+                                             ├─▶ OpenUI Lang  (streaming, generative)
+                                             └─▶ RSC          (server-rendered, zero client JS)
                                                       │
                                               theme-bridge re-skins
                                               every generated component
@@ -90,17 +92,18 @@ Framework   Next.js 16.3.5 (Cache Components · React Compiler · proxy · root-
 UI          shadcn/ui + Radix · lucide · cmdk · sonner · @number-flow/react
 Motion      GSAP 3.15 (plugins now 100% free) · Motion 13 · Lenis · hand-written WebGL shaders
 State       Zustand 5 · SWR · nuqs · React Hook Form + Zod 4
-AI          AI SDK v7 (ToolLoopAgent · toolApproval) · Mastra · @ai-sdk/mcp
-GenUI       json-render 0.21 (Vercel Labs) · OpenUI react-lang 0.3 · custom theme-bridge
-Kernel      DSH-Cordis 4.0 (vendored, isomorphic — plugin lifecycle · DI · event bus)
-Content     Drizzle + PostgreSQL · MinIO · Shiki 4 (dual-theme code) · KaTeX · Mermaid · TipTap 3
-Auth        better-auth 1.7 + Passkey (WebAuthn, passwordless)
-Infra       Kubernetes + ArgoCD GitOps · OTel → Loki/Tempo/Grafana · Playwright + Lighthouse CI gates
+AI          AI SDK v7 (ToolLoopAgent · toolApproval · streaming) · @ai-sdk/openai-compatible
+GenUI       json-render 0.21 (Vercel Labs) · OpenUI react-lang 0.3 · RSC GenUI · custom theme-bridge
+Kernel      DSH-Cordis microkernel on @cordisjs/core 3.18 (isomorphic — plugin lifecycle · DI · event bus)
+Content     Drizzle + PostgreSQL (CNPG) · unified/remark/rehype · Shiki 4 (dual-theme) · KaTeX · reading-time
+Auth        better-auth + Passkey (planned · currently API-token guarded admin routes)
+Infra       Kubernetes + ArgoCD GitOps · OTel instrumentation · Redis rate limits · MinIO (planned)
+Planned     Mastra workflows · Mermaid · TipTap /admin editor · blog-as-MCP · pgvector semantic search
 ```
 
 ## 🚀 Quick start
 
-> ⚠️ Under construction — M0 is in progress. Star & watch to follow along.
+> 🛰 **Status (2026-09)** — M0–M2 shipped & green: site shell · dual-kernel harness · live visitor agent (real LLM) · GenUI json-render + OpenUI · PostgreSQL content pipeline · author content-agent · standalone/Docker/GitOps artifacts.
 
 ```bash
 git clone https://github.com/Thecnfor/shizurak.git
@@ -109,9 +112,19 @@ corepack enable && pnpm install
 pnpm dev
 ```
 
+Everything runs without external services (content APIs fall back gracefully). For the full experience, drop a `.env.local`:
+
+```bash
+DATABASE_URL=postgres://…        # content pipeline + persistence (CNPG)
+REDIS_URL=redis://…             # agent rate limiting (optional)
+LITELLM_BASE_URL=https://…      # any OpenAI-compatible gateway
+LITELLM_KEY=***                 # …
+LITELLM_CHAT_MODEL=…            # powers the agent
+```
+
 ## 📖 Specifications
 
-This project is spec-first. Every architectural decision lives in a versioned document — implementation follows the specs, not the other way around:
+This project is spec-first. Five versioned documents are the source of truth — implementation follows the specs, not the other way around:
 
 | Doc | What's inside |
 |:--|:--|
@@ -119,17 +132,18 @@ This project is spec-first. Every architectural decision lives in a versioned do
 | [**02 · Architecture Spec**](./docs/specs/02-architecture-spec.md) | Next.js 16 conventions · DSH-Cordis dual-kernel plugin specs · the full Agent Harness (L0/L1/L2 permission model, triple cost gates) · content pipeline & data model · i18n · deployment topology |
 | [**03 · State Spec**](./docs/specs/03-state-spec.md) | Six-layer state taxonomy · a decision tree for "where does this state live?" · store contracts · theme dual-track design |
 | [**04 · Dependency Spec**](./docs/specs/04-dependency-spec.md) | Every dependency, version-locked with rationale · the "build vs. reuse" boundary · bundle budgets · frontier audit |
+| [**05 · Harness Spec**](./docs/specs/05-harness-spec.md) | The unifying contract — microkernel plugin/service/event rules · **three-engine GenUI abstraction** · RSC GenUI channel & the Data-Stream/RSC transport mutex · engine routing table · L0/L1/L2 permissions · five cost gates · page-context stack · observability |
 
 ## 🗺 Roadmap
 
-- [x] **M-1** — Specifications: design · architecture · state · dependencies
-- [ ] **M0 — Foundation**: project skeleton · theme engine + `void`/`lumen` · site shell (nav, effects layer, ⌘K) · i18n routing
-- [ ] **M1 — Content**: Agent-CMS (editor, diff review, publish) · MDX pipeline (Shiki/KaTeX/Mermaid/OG images) · ingest CLI · search v1
-- [ ] **M2 — Kernel**: Cordis dual kernel · visitor agent · GenUI dual engine + theme-bridge · rate limiting & cost gates
-- [ ] **M3 — Author side**: content agent workflows · comment enhancements · analytics dashboard
-- [ ] **M4 — Ship**: ArgoCD pipeline · observability · performance budget verification · security audit
+- [x] **M-1** — Specifications: design · architecture · state · dependencies · **harness**
+- [x] **M0 — Foundation**: skeleton · four-layer theme engine + `void`/`lumen` · site shell (nav, FX, ⌘K) · i18n · View Transitions (route morph + theme circle-morph) · `<Activity>` agent dock
+- [x] **M1 — Content**: Drizzle schema on PostgreSQL · compile pipeline (unified · Shiki dual-theme · KaTeX · TOC · reading-time) · posts list/detail with shared-element morph · AI-involvement labels
+- [x] **M2 — Kernel & agent**: DSH-Cordis dual kernel on @cordisjs/core · visitor agent (AI SDK v7 ToolLoopAgent + real LLM + L0/L1/L2 tools) · GenUI json-render + OpenUI end-to-end · Redis rate limit · thread/spec persistence · `/lab` shareable GenUI
+- [x] **M3 — Author side (core)**: content agent (material → real-LLM draft) · guarded draft/publish APIs · PG workflow — ⏳ `/admin` rich editor UI · comments · analytics dashboard
+- [x] **M4 — Ship (artifacts)**: standalone Dockerfile · GitLab CI · ArgoCD/k8s manifests · OTel instrumentation · `/api/health` — ⏳ first production rollout
 
-**Later**: semantic search v2 · blog-as-MCP · English translation pipeline · reserved themes
+**Later**: semantic search v2 (pgvector) · blog-as-MCP · English translation pipeline · reserved themes (terminal/paper/cyber) · Mastra workflows · Lighthouse CI budgets
 
 ## 🤝 Contributing
 

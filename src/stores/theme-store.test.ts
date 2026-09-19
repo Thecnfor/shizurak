@@ -44,4 +44,19 @@ describe("theme-store", () => {
     useThemeStore.getState().hydrate();
     expect(useThemeStore.getState().themeId).toBe("void");
   });
+
+  it("setTheme 记录 previousResolved（供特效层 fade-out）", () => {
+    useThemeStore.getState().setTheme("lumen");
+    expect(useThemeStore.getState().previousResolved.meta.id).toBe("void");
+    expect(useThemeStore.getState().resolved.meta.id).toBe("lumen");
+  });
+
+  it("切换写 shizurak-theme cookie（供 RSC 通道服务端读取）", () => {
+    useThemeStore.getState().setTheme("lumen");
+    const m = /shizurak-theme=([^;]+)/.exec(document.cookie);
+    expect(m).toBeTruthy();
+    const snap = JSON.parse(decodeURIComponent(m?.[1] ?? "{}"));
+    expect(snap.themeId).toBe("lumen");
+    expect(snap.mode).toBeTruthy();
+  });
 });

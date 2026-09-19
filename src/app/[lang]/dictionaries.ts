@@ -1,16 +1,18 @@
 import { notFound } from "next/navigation";
 import { lang } from "next/root-params";
-import { hasLocale, type Locale } from "@/lib/i18n/negotiate";
+import { hasLocale } from "@/lib/i18n/negotiate";
+import enJson from "./dictionaries/en.json";
+import zhJson from "./dictionaries/zh.json";
 
-const dictionaries = {
-  zh: () => import("./dictionaries/zh.json").then((m) => m.default),
-  en: () => import("./dictionaries/en.json").then((m) => m.default),
-} satisfies Record<Locale, () => Promise<unknown>>;
-
-export type Dictionary = Awaited<ReturnType<(typeof dictionaries)["zh"]>>;
+/**
+ * 字典类型以中文 JSON 为唯一真源（静态导入 → 结构类型具体、可自动补全）。
+ * 两份字典体量极小，静态引入无打包负担；运行时按 locale 选择。
+ * 加语言 = 加一份 JSON + 扩 zhJson 结构，不改调用点。
+ */
+export type Dictionary = typeof zhJson;
 
 export async function getDictionary(): Promise<Dictionary> {
   const locale = await lang();
   if (!hasLocale(locale)) notFound();
-  return dictionaries[locale]() as Promise<Dictionary>;
+  return locale === "en" ? (enJson as Dictionary) : zhJson;
 }

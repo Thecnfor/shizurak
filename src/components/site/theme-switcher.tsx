@@ -4,6 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import * as Slider from "@radix-ui/react-slider";
 import { Palette } from "lucide-react";
 import { useState } from "react";
+import { withThemeViewTransition } from "@/lib/motion/vt";
 import { useThemeStore } from "@/stores/theme-store";
 import { themeList } from "@/themes/registry";
 
@@ -82,7 +83,9 @@ export function ThemeSwitcher({ labels }: { labels: Record<string, string> }) {
               <button
                 key={t.meta.id}
                 type="button"
-                onClick={() => setTheme(t.meta.id)}
+                onClick={() =>
+                  withThemeViewTransition(() => setTheme(t.meta.id))
+                }
                 data-active={t.meta.id === themeId}
                 className="flex items-center gap-2 rounded-sm border border-border p-2 text-left text-sm data-[active=true]:border-border-strong data-[active=true]:text-ink"
               >
