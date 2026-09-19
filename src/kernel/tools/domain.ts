@@ -64,7 +64,23 @@ export function registerDomainTools(tools: ToolsService): void {
     level: "L2",
     description: "给作者发送消息（不可逆，需确认）",
     parameters: z.object({ message: z.string().min(1) }),
-    // 无 execute：L2 只能经确认卡批准后由受信通道执行一次
+    // 只有经 SDK 审批层（toolApproval: user-approval）用户确认后才会被调到这里
+    execute: async ({ message }, ctx) => {
+      if (process.env.DATABASE_URL) {
+        const { getDb } = await import("@/lib/db/client");
+        const { contacts } = await import("@/lib/db/schema/agent");
+        const [row] = await getDb()
+          .insert(contacts)
+          .values({
+            message,
+            threadId: ctx.threadId ?? null,
+            locale: ctx.locale,
+          })
+          .returning({ id: contacts.id });
+        return { queued: true, id: row.id };
+      }
+      return { queued: true };
+    },
     preview: ({ message }) => ({
       title: "联系作者",
       summary: message,

@@ -30,6 +30,10 @@ export const pageContextPlugin = plugin(
         const existing = _stack.findIndex((r) => r.id === ref.id);
         if (existing >= 0) _stack.splice(existing, 1);
         _stack.push({ ...ref, depth: _stack.length });
+        // 去重可能发生在栈中部：统一重算深度，保证 depth ≡ 栈内位置
+        _stack.forEach((r, idx) => {
+          r.depth = idx;
+        });
         ctx.emit("page/context.pushed", { depth: _stack.length });
       },
       pop(id) {

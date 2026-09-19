@@ -9,6 +9,7 @@ export async function SiteNav({ lang }: { lang: string }) {
     { href: `/${lang}/projects`, label: dict.nav.projects },
     { href: `/${lang}/about`, label: dict.nav.about },
     { href: `/${lang}/lab`, label: dict.nav.lab },
+    { href: `/${lang}/search`, label: dict.nav.search },
   ];
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur">

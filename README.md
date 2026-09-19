@@ -96,9 +96,10 @@ AI          AI SDK v7 (ToolLoopAgent · toolApproval · streaming) · @ai-sdk/op
 GenUI       json-render 0.21 (Vercel Labs) · OpenUI react-lang 0.3 · RSC GenUI · custom theme-bridge
 Kernel      DSH-Cordis microkernel on @cordisjs/core 3.18 (isomorphic — plugin lifecycle · DI · event bus)
 Content     Drizzle + PostgreSQL (CNPG) · unified/remark/rehype · Shiki 4 (dual-theme) · KaTeX · reading-time
-Auth        better-auth + Passkey (planned · currently API-token guarded admin routes)
+Auth        token→cookie session guarding /admin & /api/admin (better-auth + Passkey planned)
 Infra       Kubernetes + ArgoCD GitOps · OTel instrumentation · Redis rate limits · MinIO (planned)
-Planned     Mastra workflows · Mermaid · TipTap /admin editor · blog-as-MCP · pgvector semantic search
+Surface     search v1 (pg_trgm) · RSS · sitemap/robots · dynamic OG (next/og) · MCP server (/api/mcp)
+Planned     Mastra workflows · Mermaid · TipTap rich editor · pgvector semantic search
 ```
 
 ## 🚀 Quick start
@@ -140,10 +141,12 @@ This project is spec-first. Five versioned documents are the source of truth —
 - [x] **M0 — Foundation**: skeleton · four-layer theme engine + `void`/`lumen` · site shell (nav, FX, ⌘K) · i18n · View Transitions (route morph + theme circle-morph) · `<Activity>` agent dock
 - [x] **M1 — Content**: Drizzle schema on PostgreSQL · compile pipeline (unified · Shiki dual-theme · KaTeX · TOC · reading-time) · posts list/detail with shared-element morph · AI-involvement labels
 - [x] **M2 — Kernel & agent**: DSH-Cordis dual kernel on @cordisjs/core · visitor agent (AI SDK v7 ToolLoopAgent + real LLM + L0/L1/L2 tools) · GenUI json-render + OpenUI end-to-end · Redis rate limit · thread/spec persistence · `/lab` shareable GenUI
-- [x] **M3 — Author side (core)**: content agent (material → real-LLM draft) · guarded draft/publish APIs · PG workflow — ⏳ `/admin` rich editor UI · comments · analytics dashboard
-- [x] **M4 — Ship (artifacts)**: standalone Dockerfile · GitLab CI · ArgoCD/k8s manifests · OTel instrumentation · `/api/health` — ⏳ first production rollout
+- [x] **M3 — Author side**: content agent (material → real-LLM draft) · guarded draft/publish APIs · PG workflow · **minimal `/admin` CMS** (token→cookie session, Markdown editor, one-click publish) — ⏳ rich editor (TipTap) · comments · analytics dashboard
+- [x] **M4 — Ship (artifacts)**: standalone Dockerfile · GitLab CI · ArgoCD/k8s manifests · OTel instrumentation · `/api/health`(+`/live`) — ⏳ first production rollout
+- [x] **Content surface**: search v1 (pg_trgm fuzzy, CJK+Latin, `/search`) · RSS (`/feed.xml`) · sitemap/robots · dynamic OG images — semantic search v2 (pgvector) planned
+- [x] **Harness completeness**: L2 approval loop via AI SDK v7 `toolApproval` (in-stream approval-request → dock confirm card → execute) · **blog-as-MCP** (`/api/mcp`, official SDK, read-only content tools) · reserved themes `terminal` & `paper` proving the four-layer contract
 
-**Later**: semantic search v2 (pgvector) · blog-as-MCP · English translation pipeline · reserved themes (terminal/paper/cyber) · Mastra workflows · Lighthouse CI budgets
+**Later**: semantic search v2 (pgvector) · English translation pipeline · rich TipTap editor · Mastra workflows · Lighthouse CI budgets · Waline comments
 
 ## 🤝 Contributing
 

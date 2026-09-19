@@ -59,6 +59,10 @@ export function catalogPrompt(): string {
   return `可用 GenUI 组件（type 字段选择）：\n${(
     Object.keys(catalog) as CatalogComponentName[]
   )
-    .map((k) => `- ${k}: ${JSON.stringify(catalog[k].shape)}`)
+    .map(
+      // biome-ignore lint/suspicious/noExplicitAny: 各项 shape 异构，toJSONSchema 只读结构
+      (k) =>
+        `- ${k}: ${JSON.stringify(z.toJSONSchema(catalog[k].shape as any))}`,
+    )
     .join("\n")}`;
 }

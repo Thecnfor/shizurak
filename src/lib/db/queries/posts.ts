@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { getDb } from "../client";
 import { posts } from "../schema";
@@ -56,4 +56,46 @@ export async function getPostBySlug(slug: string, locale: string) {
     )
     .limit(1);
   return row ?? null;
+}
+
+export interface SearchHit extends PostSummary {}
+
+/** 搜索 v1（pg_trgm 模糊 + 相似度排序，中英通用）；v2 语义见路线图。 */
+export async function searchPosts(
+  locale: string,
+  q: string,
+): Promise<SearchHit[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("posts", `search:${locale}`);
+  const query = q.trim();
+  if (!query) return [];
+  const like = `%${query}%`;
+  // 同一个 sql 片段复用于 select/orderBy：drizzle 别名不带 AS，不能按别名排序
+  const score = sql<number>`greatest(similarity(${posts.title}, ${query}), similarity(coalesce(${posts.summary}, ''), ${query}))`;
+  const rows = await getDb()
+    .select({
+      slug: posts.slug,
+      title: posts.title,
+      summary: posts.summary,
+      publishedAt: posts.publishedAt,
+      readingTime: posts.readingTime,
+      score,
+    })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.status, "published"),
+        eq(posts.locale, locale as "zh" | "en"),
+        isNull(posts.deletedAt),
+        or(
+          sql`${posts.title} ilike ${like}`,
+          sql`${posts.summary} ilike ${like}`,
+          sql`${posts.contentMd} ilike ${like}`,
+        ),
+      ),
+    )
+    .orderBy(desc(score), desc(posts.publishedAt))
+    .limit(30);
+  return rows.map(({ score: _s, ...r }) => r);
 }

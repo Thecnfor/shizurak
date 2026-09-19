@@ -146,9 +146,9 @@ export function defineKernel(
   }
 
   function toCordis(p: RegisteredPlugin) {
-    const impl = (c: Context) => {
+    const impl = async (c: Context) => {
       try {
-        const d = p.factory(facade(p.meta.name));
+        const d = await p.factory(facade(p.meta.name));
         if (typeof d === "function") disposers.push(d as Disposable);
       } catch (e) {
         // cordis v3 对工厂同步抛错只记日志并 resolve（静默吞错）；

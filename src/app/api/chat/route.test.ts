@@ -157,8 +157,9 @@ describe("POST /api/chat —— body 注入不可提权 execCtx / 工具循环�
     expect(calls).toBe(12);
     expect(calls).toBeLessThan(CALL_CAP);
 
-    // ④ L2 红线不因请求体变化：contactAuthor 依旧无 execute、invoke 依旧挂起待确认
-    expect(tools.get("contactAuthor")?.execute).toBeUndefined();
+    // ④ L2 红线不因请求体变化：内核级 invoke 拦断保留（needs-approval）；
+    //    execute 仅经 SDK toolApproval('user-approval') 用户确认后才会被循环执行。
+    expect(tools.get("contactAuthor")?.level).toBe("L2");
     const invoked = await tools.invoke(
       "contactAuthor",
       { message: "提权尝试" },

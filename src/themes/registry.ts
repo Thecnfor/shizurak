@@ -1,12 +1,14 @@
 import type { Theme } from "@/themes/contract";
 import { lumenTheme } from "@/themes/lumen";
 import { mergeTheme } from "@/themes/merge";
+import { paperTheme } from "@/themes/paper";
+import { terminalTheme } from "@/themes/terminal";
 import { voidTheme } from "@/themes/void";
 
-export { lumenTheme, voidTheme };
+export { lumenTheme, paperTheme, terminalTheme, voidTheme };
 
 /** 源主题声明表（物化继承链前） */
-const declared: Theme[] = [voidTheme, lumenTheme];
+const declared: Theme[] = [voidTheme, lumenTheme, paperTheme, terminalTheme];
 const declaredById: Record<string, Theme> = Object.fromEntries(
   declared.map((t) => [t.meta.id, t]),
 );

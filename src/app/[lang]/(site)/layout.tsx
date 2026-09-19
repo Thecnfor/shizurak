@@ -27,6 +27,11 @@ export default async function SiteLayout({
               title: dict.agentDock.title,
               placeholder: dict.agentDock.placeholder,
               dock: dict.agentDock.dock,
+              error: dict.agentDock.error,
+              approve: dict.agentDock.approve,
+              reject: dict.agentDock.reject,
+              approvalTitle: dict.agentDock.approvalTitle,
+              approvalDone: dict.agentDock.approvalDone,
             }}
           />
           <CommandMenu

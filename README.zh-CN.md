@@ -9,7 +9,7 @@
 
 *SpaceX 太空歌剧 × OpenAI/苹果极简 —— 是可互换的完整体验，不是换配色。*
 
-**🛰 状态（2026-09）**：M0–M4 核心已交付——双层内核（真 cordis）· 真实 LLM 访客 Agent · GenUI 双引擎端到端 · PostgreSQL 内容管线 · 作者内容 Agent · 部署产物就绪。全部门禁绿。
+**🛰 状态（2026-09）**：M0–M4 全部交付——双层内核（真 cordis）· 真实 LLM 访客 Agent + L2 审批回流 · GenUI 双引擎端到端 · PostgreSQL 内容管线 + 搜索 v1/RSS/OG · 作者 Agent + `/admin` 最小 CMS · blog-as-MCP · 四主题（void/lumen/terminal/paper）· 部署产物就绪。全部门禁绿。
 
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [规范文档](./docs/specs/) · [路线图](#-路线图)
 
@@ -122,10 +122,12 @@ AI     AI SDK v7（ToolLoopAgent · 流式）· @ai-sdk/openai-compatible ✅
        json-render 0.21 ✅ · OpenUI react-lang 0.3 ✅ · theme-bridge ✅ · RSC GenUI（ai/rsc streamUI）⏳
        Cordis 微内核（@cordisjs/core 3.18）✅
        → 模型经 LiteLLM/Ark 网关（预算熔断 + Redis 限流）
-内容   Drizzle + PostgreSQL（CNPG）✅ · unified/remark/rehype + Shiki 4 双主题 + KaTeX ✅
-       Mermaid 12 · TipTap 3 编辑器 · MinIO ⏳
+内容   Drizzle + PostgreSQL（CNPG）✅ · unified/remark/rehype + Shiki 4 双主题 + KaTeX + **rehype-sanitize** ✅
+       搜索 v1（pg_trgm）✅ · RSS ✅ · sitemap/robots ✅ · 动态 OG（next/og）✅
+       Mermaid 12 · TipTap 3 富编辑器 · MinIO ⏳
 i18n   app/[lang] + proxy 协商 + next/root-params（官方最佳实践）✅
-认证   better-auth + Passkey ⏳（当前：API token 守卫的作者接口）
+协议   blog-as-MCP：/api/mcp（官方 @modelcontextprotocol/sdk，只读内容工具）✅
+认证   token→cookie 会话守 /admin & /api/admin ✅（better-auth + Passkey ⏳）
 运维   standalone Dockerfile ✅ · GitLab CI ✅ · ArgoCD/k8s 清单 ✅ · OTel instrumentation ✅
 ```
 
@@ -140,6 +142,7 @@ shizurak/
 ├── docs/specs/            # 五份规范（实现唯一依据）
 ├── src/                   # 应用（结构与边界见架构规范 §3）
 ├── src/kernel + src/lib/kernel  # DSH-Cordis 双层内核（插件化）
+│ ├   /[lang]/lab/s/[id] · /search · /admin · /feed.xml · /api/{chat,genui,admin,health,mcp,og}
 ├── scripts/               # seed / gen-theme-css / theme-check
 ├── deploy/                # k8s + ArgoCD 清单
 └── ...（Dockerfile / .gitlab-ci.yml / drizzle.config.ts）
@@ -152,11 +155,12 @@ shizurak/
 | **M0 · 地基** | 工程骨架 · 主题引擎 + void/lumen · 站点壳（导航/特效层/⌘K）· i18n · View Transitions（路由转场+主题形变）· `<Activity>` 导览坞 | ✅ |
 | **M1 · 内容** | Drizzle schema + PG 迁移 · 编译管线（Shiki/KaTeX/TOC/阅读时长）· 列表/详情 + 共享元素形变 · AI 参与度标签 | ✅ |
 | **M2 · 内核** | cordis 双层内核 · 访客 Agent（真 LLM + L0/L1/L2 工具）· GenUI json-render+OpenUI 端到端 · Redis 限流 · 线程/spec 持久化 · `/lab` 分享页 | ✅ |
-| **M3 · 作者侧** | content-agent（素材→真 LLM 草稿）· 草稿/发布接口 · PG 工作流 | ✅ 核心 |
-| | `/admin` 富文本编辑器 UI · 评论增强 · 埋点仪表盘 · 英文翻译管线 | ⏳ |
-| **M4 · 上线** | standalone Dockerfile · GitLab CI · ArgoCD/k8s 清单 · OTel · /api/health | ✅ 产物 |
+| **M3 · 作者侧** | content-agent（素材→真 LLM 草稿）· 草稿/发布接口 · PG 工作流 · `/admin` 最小 CMS（token→cookie 会话 + Markdown 编辑 + 一键发布） | ✅ |
+| | TipTap 富编辑器 · 评论增强 · 埋点仪表盘 · 英文翻译管线 | ⏳ |
+| **M4 · 上线** | standalone Dockerfile · GitLab CI · ArgoCD/k8s 清单 · OTel · /api/health(+live) | ✅ 产物 |
 | | 首次生产 rollout · Lighthouse 预算门禁 | ⏳ |
-| **Later** | 语义搜索 v2（pgvector）· blog-as-MCP · 预留主题（terminal/paper/cyber）· Mastra 工作流 | |
+| **横切** | L2 审批回流（AI SDK v7 toolApproval → Dock 确认卡）✅ · blog-as-MCP（/api/mcp）✅ · 预留主题 terminal/paper ✅ · 搜索 v1（pg_trgm）+ RSS/sitemap/OG ✅ | |
+| **Later** | 语义搜索 v2（pgvector）· TipTap 富编辑器 · Mastra 工作流 · Waline 评论 · cyber 主题 | |
 
 ## 八、开发
 

@@ -65,3 +65,14 @@ export const settings = pgTable("settings", {
   key: text("key").primaryKey(),
   value: jsonb("value").notNull(),
 });
+
+/** L2 审批通过后落库的读者来信（contactAuthor 工具产物）。 */
+export const contacts = pgTable("contacts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  message: text("message").notNull(),
+  threadId: uuid("thread_id"),
+  locale: text("locale"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

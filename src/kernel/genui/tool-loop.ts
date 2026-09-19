@@ -50,15 +50,15 @@ const bridgeTool = aiTool as unknown as (
 
 /**
  * 访客/作者 agent —— 直接用 AI SDK v7 官方 `ToolLoopAgent`（不再手搓工具循环）。
- * 内核 `ai.tools`（领域工具注册表）桥接为 AI SDK 工具；L2 无 execute 故永不自动执行
- * （红线）。M4 接 `/api/chat` 时同一 agent `.stream()` 出 UI 流，审批经 useChat 回流。
+ * 内核 `ai.tools`（领域工具注册表）桥接为 AI SDK 工具；L2 由官方 `toolApproval:
+ * 'user-approval'` 挂起→流内发出 tool-approval-request→客户端确认后回流执行（红线：无确认永不执行）。
  */
 export function createAgentService(ctx: KernelContext): AgentService {
   const models = ctx.require<ModelsService>("ai.models");
   const tools = ctx.require<ToolsService>("ai.tools");
   const genui = ctx.require<{ routingPrompt(): string }>("ai.genui");
 
-  // 内核工具 → AI SDK 工具（含 execute 副作用捕获）；L2 无 execute 永不自动执行。
+  // 内核工具 → AI SDK 工具（含 execute 副作用捕获）；L2 经 SDK 审批层后直接 execute。
   function buildAgent(
     maxSteps: number,
     execCtx: ToolExecContext,
@@ -66,28 +66,33 @@ export function createAgentService(ctx: KernelContext): AgentService {
   ) {
     const toolOutputs: AgentRunResult["toolOutputs"] = [];
     const toolSet: Record<string, ToolSet[string]> = {};
+    const toolApproval: Record<string, "user-approval"> = {};
     for (const d of tools.list()) {
       toolSet[d.id] = bridgeTool({
         description: d.description,
         inputSchema: d.parameters,
-        execute:
-          d.level === "L2"
-            ? undefined
-            : async (input: unknown) => {
-                const r = await tools.invoke(d.id, input, execCtx);
-                if (r.status === "ok") {
-                  toolOutputs.push({ id: r.id, output: r.output });
-                  return r.output;
-                }
-                throw new Error(
-                  r.status === "error" ? r.error : "needs-approval",
-                );
-              },
+        execute: async (input: unknown) => {
+          // L2：SDK 审批层保证只有用户确认后才进到这里；绕开 invoke 的内核级拦断
+          if (d.level === "L2") {
+            if (!d.execute) throw new Error(`L2 工具缺少 execute: ${d.id}`);
+            const out = await d.execute(input as never, execCtx);
+            toolOutputs.push({ id: d.id, output: out });
+            return out;
+          }
+          const r = await tools.invoke(d.id, input, execCtx);
+          if (r.status === "ok") {
+            toolOutputs.push({ id: r.id, output: r.output });
+            return r.output;
+          }
+          throw new Error(r.status === "error" ? r.error : "needs-approval");
+        },
       });
+      if (d.level === "L2") toolApproval[d.id] = "user-approval";
     }
     const agent = new ToolLoopAgent({
       model: models.chat() as LanguageModel,
       tools: toolSet as ToolSet,
+      toolApproval: toolApproval as never,
       instructions:
         `${system ?? ""}\n${genui.routingPrompt()}\n${buildGenUiSpecPrompt()}`.trim(),
       stopWhen: stepCountIs(maxSteps),

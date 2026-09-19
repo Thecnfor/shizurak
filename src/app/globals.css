@@ -227,6 +227,7 @@ h3 {
 .shiki,
 .shiki code,
 .shiki pre {
+  /* biome-ignore lint/complexity/noImportantStyles: 代码块背景需压过 shiki 内联背景以随主题透底 */
   background: transparent !important;
 }
 .shiki span {
