@@ -1,0 +1,58 @@
+# shizurak-web 部署（架构规范 §12 · Rak 集群 k3s + Traefik + CNPG/Redis/MinIO/LiteLLM 复用）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shizurak-web
+  namespace: core-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: shizurak-web }
+  template:
+    metadata:
+      labels: { app: shizurak-web }
+    spec:
+      containers:
+        - name: web
+          # tag 由 argocd-apps GitOps 单独 bump（不在此硬编）
+          image: harbor.app.xrak.top/core-ui/shizurak:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef: { name: shizurak-env }
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 15
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shizurak-web
+  namespace: core-ui
+spec:
+  selector: { app: shizurak-web }
+  ports:
+    - port: 80
+      targetPort: 3000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: shizurak-web
+  namespace: core-ui
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`blog.xrak.top`)
+      kind: Rule
+      services:
+        - name: shizurak-web
+          port: 80
+  tls:
+    certResolver: default

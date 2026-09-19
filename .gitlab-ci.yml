@@ -1,0 +1,45 @@
+# shizurak-web CI（架构规范 §12）：质量门禁 → kaniko 镜像 →  bump argocd-apps（GitOps 唯一写入口）
+stages: [verify, build, deploy]
+default:
+  image: node:22-bookworm-slim
+  before_script:
+    - corepack enable
+    - pnpm install --frozen-lockfile
+
+lint:
+  stage: verify
+  script: [pnpm exec biome check src]
+
+typecheck:
+  stage: verify
+  script: [pnpm exec tsc --noEmit]
+
+unit:
+  stage: verify
+  script: [pnpm exec vitest run]
+
+e2e:
+  stage: verify
+  image: mcr.microsoft.com/playwright:v1.63.0-noble
+  script:
+    - corepack enable
+    - pnpm install --frozen-lockfile
+    - pnpm exec playwright install --with-deps chromium
+    - pnpm exec playwright test
+
+image:
+  stage: build
+  image: gcr.io/kaniko-project/executor:debug
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"harbor.app.xrak.top\":{\"auth\":\"$(printf '%s:%s' "$HARBOR_USER" "$HARBOR_PASS" | base64)\"}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile
+      --destination harbor.app.xrak.top/core-ui/shizurak:$CI_COMMIT_SHORT_SHA
+  only: [main]
+
+bump-argocd:
+  stage: deploy
+  script:
+    # 通过 argocd-apps 仓库 bump 镜像 tag 触发金丝雀发布（GitOps）
+    - echo "bump core-ui/shizurak -> $CI_COMMIT_SHORT_SHA in argocd-apps (见 rak-release)"
+  only: [main]
