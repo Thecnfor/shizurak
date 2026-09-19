@@ -2,7 +2,7 @@
 
 > 项目：**shizurak**（blog.xrak.top）— 伍泽凯个人博客
 > 状态：定稿候选 v1 · 2026-09-19 · 版本快照：2026-09-19 全量 npm 实测
-> 关联：[设计规范](./01-design-spec.md) · [架构规范](./02-architecture-spec.md) · [状态管理规范](./03-state-spec.md)
+> 关联：[设计规范](./01-design-spec.md) · [架构规范](./02-architecture-spec.md) · [状态管理规范](./03-state-spec.md) · [Harness 规范](./05-harness-spec.md)
 
 ---
 
@@ -69,13 +69,15 @@
 | 包 | 版本 | 用途 |
 |----|------|------|
 | `ai` | 7.0.106 | Vercel AI SDK 核心：**`ToolLoopAgent`**（官方 Agent 抽象——审批/步数/缓存钩子）/ `toolApproval` / `stopWhen` / reasoning parts |
-| `@ai-sdk/react` | 4.0.109 | `useChat` + `DefaultChatTransport` |
+| `ai/rsc`（`ai` 内置子入口） | — | **不装新包**：`streamUI` + Server Actions 实现 **RSC GenUI**（服务端直出组件，见 05 §4）；与 useChat 的 Data Stream **传输互斥**，按通道选型 |
+| `@ai-sdk/react` | 随 `ai` 主版本对齐（安装时 npm 实测） | `useChat` + `DefaultChatTransport`；**版本号与 `ai` 主版本同步**，不写死旧号段 |
 | `@ai-sdk/openai-compatible` | 3.0.52 | provider 指向 **LiteLLM 网关**（零密钥直连） |
 | `@ai-sdk/mcp` | 2.0.53 | **官方 MCP 客户端**（`createMCPClient`：Streamable HTTP/SSE/stdio + OAuth + 会话重连） |
 | `@mastra/core` | 1.67.0 | 工作流引擎（`createWorkflow/createStep/commit`）：content/ingest/index/translate 管线 |
 | `@json-render/core` | 0.21.0 | GenUI 确定性引擎：catalog（Zod）+ spec 类型 |
 | `@json-render/react` | 0.21.0 | `Renderer` / `StateProvider` / `VisibilityProvider` |
 | `@json-render/zustand` | 0.21.0 | json-render StateStore 适配（与 Zustand 5 对齐） |
+| `@json-render/image` | 0.21.0 | **OG/社交图与 GenUI 同源**：JSON spec → SVG/PNG（服务端，设计规范 §7.5） |
 | `@openuidev/react-lang` | 0.3.0 | GenUI 生成性引擎：组件库定义 + 系统提示生成 + 流式渲染 |
 | `@openuidev/lang-core` | 0.3.0 | OpenUI Lang 解析/提示生成（框架无关层，服务端用） |
 | `@openuidev/react-ui` | 0.16.1 | OpenUI 预构建聊天布局（选择性取用，皮肤自绘） |
@@ -144,6 +146,7 @@
 | pgvector 嵌入管线 | v2（搜索语义化） | `embedding` 列预留；扩展随 CNPG 镜像启用 |
 | OGL（可选） | 若裸 WebGL2 样板过重 | 3KB WebGL 辅助；默认不引入，自研 shader 层优先 |
 | `@openuidev/react-headless` | 仅当 react-lang 直喂流不够用 | 见 §2.5 注：不接管聊天状态，只作适配器 |
+| Next `<Stack>` / `useActiveStack` | promote 到 stable 后 | **16.3.5 stable 未导出**（Canary 预览）；等价能力用 `<ViewTransition>` + `<Activity>`（见 05 术语索引）；不跟 Canary 进生产 |
 
 ### 2.10 前沿性核对（2026-09-19 全量实测）
 
@@ -152,9 +155,10 @@
 | 层 | 前沿选择 | 核对 |
 |----|----------|:----:|
 | 框架 | Next.js 16.3.5（Cache Components · React Compiler · proxy · **root-params 新 API**）· React 19.2.8 | ✓ npm latest |
+| React 原生特性 | **19.2：`<ViewTransition>`（跨页 morph）· `<Activity>`（Dock 保活）· `useEffectEvent` · `useOptimistic`**——App Router canary 无配置可用 | ✓ 零额外依赖 |
 | AI 核心 | **AI SDK v7.0.106**：`ToolLoopAgent`（v7 官方 Agent 抽象）· `toolApproval`（v7 稳定化）· reasoning parts · `allowSystemInMessages` 防注入 | ✓ 主版本 v7（非 v5/v6） |
 | Harness | DSH-Cordis 微内核（cross-dashboard 生产验证 vendor）+ Mastra 1.67.0 + **`@ai-sdk/mcp` 2.0.53 官方 MCP** | ✓ 各自 latest |
-| GenUI | **json-render 0.21**（Vercel Labs）+ **OpenUI react-lang 0.3**（thesysdev，9.6k★，MIT，昨日仍在推送）双引擎 | ✓ 各自 latest |
+| GenUI | **json-render 0.21**（Vercel Labs）+ **OpenUI react-lang 0.3**（thesysdev，9.6k★，MIT，昨日仍在推送）+ **RSC（`ai/rsc` 原生）** 三引擎 | ✓ 各自 latest |
 | 动效 | GSAP 3.15.0（全插件免费时代：SplitText/ScrollTrigger/Flip 全量可用）+ motion 13.4.0 | ✓ 最新主版本 |
 | 样式 | Tailwind 4（CSS-first `@theme`）+ shadcn CLI 4.21.0 | ✓ |
 | 认证 | better-auth 1.7.5 + `@better-auth/passkey`（WebAuthn 无密码） | ✓ |
@@ -176,6 +180,8 @@
 | 埋点（收集/查询/展示） | `lib/analytics/` + `api/events` | 胶水（~百行）+ 数据必须直接进 agent 工具链 |
 | ingest / export / theme-check CLI | `scripts/` | 胶水：与 vault 副本、CI 的专属集成 |
 | Cordis vendor | `src/kernel/vendor/` | 复用自 cross-dashboard（MIT），不重复造 |
+| genui-router（三引擎注册与路由） | `src/kernel/plugins/genui-router.ts` | 胶水：把 json-render/openui/rsc 统到 `GenUIEngine` 契约后，并路由表生成系统提示词（无现成库表达三引擎路由） |
+| RSC 专通道适配 | `app/[lang]/**/actions.tsx` + `lib/themes/ssr.ts` | 胶水：把 cookie→ResolvedTheme → server-action `streamUI` 接起来（框架原生能力，非库） |
 
 ---
 
@@ -204,9 +210,10 @@
 | GSAP core + ScrollTrigger | ~32KB | void 特效层 chunk 内 |
 | 特效层（fx chunk，idle 加载） | ≤ 45KB | **仅 void** |
 | GenUI（json-render react / openui react-lang） | ~20KB / ~15KB | 仅对话激活时懒加载 |
+| GenUI—RSC 通道 | **~0KB 额外** | 服务端直出，复用框架 runtime（无客户端渲染器） |
 | 内容增强（shiki/katex/mermaid） | 按文章按需 | 文章页懒加载 |
-| **首屏合计（lumen）** | **≤ 170KB** | — |
-| **首屏合计（void，不含 fx chunk）** | **≤ 190KB** | — |
+| **首屏合计（lumen）** | **≤ 140KB** | — |
+| **首屏合计（void，不含 fx chunk）** | **≤ 160KB** | — |
 
 纪律：新增依赖 PR 必须附 bundle-analyzer 截图；超预算即阻断。
 

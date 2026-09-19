@@ -2,7 +2,7 @@
 
 > 项目：**shizurak**（blog.xrak.top）— 伍泽凯个人博客
 > 状态：定稿候选 v1 · 2026-09-19
-> 关联：[设计规范](./01-design-spec.md) · [架构规范](./02-architecture-spec.md) · [依赖规范](./04-dependency-spec.md)
+> 关联：[设计规范](./01-design-spec.md) · [架构规范](./02-architecture-spec.md) · [依赖规范](./04-dependency-spec.md) · [Harness 规范](./05-harness-spec.md)
 
 ---
 
@@ -84,6 +84,9 @@ interface ThemeStore {
 // 订阅者：GSAP defaults 写入器 · 特效层 · GenUI 渲染器（theme-bridge）· CSS vars 注入器
 ```
 
+- **双写 cookie**：`setTheme/setMode/setOverride` 除写 localStorage + next-themes 外，同步写 `shizurak-theme` cookie（供 **RSC 通道服务端读 `ResolvedTheme`**，见 05 §4.4）；cookie 只存 `{themeId, modeChoice, overrides}` 的紧凑序列化，不存 `resolved` 产物
+- **`resolved.previousResolved`**：store 重算 `resolved` 时保留上一份，供特效层 fade-out 卸载旧层读取（设计规范 §1.3）
+
 **`ui-shell-store`**（应用外壳）：
 
 ```ts
@@ -154,6 +157,8 @@ const { messages, sendMessage, status, stop } = useChat({
 - **GenUI spec**：流内 `data-genui` part → `component-kit.render(spec)` → `agent-store.registerSpec()` 缓存
 - 持久化：服务端 `thread-store` 落库（`agent_threads`/`agent_messages`）；访客侧 `threadId` 存 sessionStorage（关页即失，无账号体系）
 
+- **RSC 专通道的状态形态（与 chat 并存但通道隔离）**：页内一键解释等走 `ai/rsc` Server Action，**不进出 `useChat` 的 `messages`**——服务端驱动、客户端近零状态（一个 Suspense + 局部岛）；产出的 RSC 组件不回写 agent-store，若用户点“保存/分享”才显式 `POST /api/genui/specs`（携 `kind:'rsc'` + `theme_id`）
+
 **内核 Service 接入**（React 桥）：
 
 ```ts
@@ -169,6 +174,20 @@ useKernelService('pageContext')            // → PageContextService
 - 仅 /admin 使用（文章编辑元数据、素材标注、设置）
 - Zod schema 放 `lib/db/schema/` 旁（`posts.schema.ts`），表单校验与 DB 校验共用同一 schema
 - 编辑器正文（TipTap）是**非受控领域**：TipTap 自管文档状态，仅提交时序列化为 markdown——不进 RHF
+
+---
+
+### 3.7 浮层与跨路由状态（React `<Activity>`）
+
+Agent Dock / ⌘K 这类“跨页应存活”的浮层状态**不进 Zustand 也不靠 URL**，而是靠 **React 19.2 `<Activity>`** 组件级保活：
+
+| 状态 | 归属 | 说明 |
+|------|------|------|
+| Dock 输入草稿 / 滚动位 / 已生成 spec | **`<Activity>`**（`display:none` 保状态 + cleanup effects） | 跨路由不 remount；开关/停靠模式写 ui-shell-store |
+| Dock 开合 / 停靠模式（floating/docked） | ui-shell-store（L3） | 跨岛共享且非 URL |
+| ⌘K 开关 | ui-shell-store（`commandOpen`） | 同上 |
+
+**原则**：能从 `<Activity>` 自然获得的 UI 存活状态，**不要往 store里塞**（避免手轮同步逻辑）；只把“其他组件需要读”的开关态进 store。浮层层级与行为见设计规范 §11。
 
 ---
 
@@ -195,8 +214,9 @@ theme-store（Zustand）────────────┐
 
 - **json-render**：`<StateProvider initialState={spec.state}>` 持有 spec 内部状态（筛选/选中）；`$state` 绑定实现数据联动；**spec 状态不提升到 agent-store**（隔离，多个 spec 互不干扰）
 - **OpenUI**：渲染器自管解析状态；完成后的最终 spec 落 `agent-store.genuiSpecs`
+- **RSC**：无客户端 spec 状态（服务端已渲染）；需交互的部分降级为 json-render（[05 §4.6](./05-harness-spec.md)）
 - **持久化**：有价值的 spec → `POST /api/genui/specs` → `specs.save()` → 分享页 `/lab/s/[id]`（RSC 直读，`use cache`）
-- **主题切换时**：spec 不动（语义数据），仅渲染器换肤（theme-bridge 广播触发重渲染，motion layout 过渡）
+- **主题切换时**：spec 不动（语义数据），仅渲染器换肤（theme-bridge 广播触发重渲染，motion layout 过渡）——仅 Data Stream 通道；RSC 通道重渲染（见 §3.5 / 05 §4.4）
 
 ---
 

@@ -2,7 +2,7 @@
 
 > 项目：**shizurak**（blog.xrak.top）— 伍泽凯个人博客
 > 状态：定稿候选 v1 · 2026-09-19
-> 关联：[设计规范](./01-design-spec.md) · [状态管理规范](./03-state-spec.md) · [依赖规范](./04-dependency-spec.md)
+> 关联：[设计规范](./01-design-spec.md) · [状态管理规范](./03-state-spec.md) · [依赖规范](./04-dependency-spec.md) · [Harness 规范](./05-harness-spec.md)
 
 ---
 
@@ -65,7 +65,7 @@ vault 内 blog/ 文件夹            rak-core /home/xrak/wiki（明文副本）
 
 | 事项 | 约定 | 说明 |
 |------|------|------|
-| **middleware → proxy** | `src/proxy.ts` **仅用于语言协商重定向**（官方指南标准用法，CDN 可优化）；**认证不用 proxy** | 本版本官方立场：proxy 是最后手段；鉴权走 RSC/layout 层 `auth.api.getSession()`（见 §8） |
+| **middleware → proxy** | `src/proxy.ts` **仅用于语言协商重定向**（官方指南标准用法，CDN 可优化）；**认证不用 proxy** | 本版本官方立场：proxy 是最后手段（是重命名 + 边界收窄，非禁用）；鉴权走 RSC/layout 层 `auth.api.getSession()`（见 §8） |
 | **i18n 预适配** | `app/[lang]/` 根布局 + `proxy` 语言协商 + `next/root-params` 字典模式 | 官方指南标准模式（§6.4）；`use cache` 缓存键自动包含 root params |
 | **Cache Components** | `next.config.ts` 设 `cacheComponents: true` | 统一开启 PPR + `use cache` + dynamicIO；`experimental.ppr` 已移除 |
 | **`use cache`** | 数据读取函数一律 `'use cache'` + `cacheLife()` + `cacheTag()` | 缓存键 = buildID + 函数签名 + 序列化参数；参数与返回值必须可序列化（无类实例/函数） |
@@ -84,7 +84,7 @@ vault 内 blog/ 文件夹            rak-core /home/xrak/wiki（明文副本）
 
 ```
 shizurak/
-├── docs/specs/                    # 四份规范（本目录）
+├── docs/specs/                    # 五份规范（本目录）
 ├── public/
 ├── scripts/
 │   ├── ingest.ts                  # 素材摄取 CLI（本机/rak-core 运行）
@@ -133,8 +133,9 @@ shizurak/
 │   │   │   ├── model-adapter.ts   # → ai.models
 │   │   │   ├── tool-registry.ts   # → ai.tools
 │   │   │   ├── mastra-engine.ts   # → workflows
+│   │   │   ├── genui-router.ts    # → ai.genui（三引擎注册与路由，见 05 §3/§5）
 │   │   │   ├── content-agent.ts   # → content
-│   │   │   ├── spec-store.ts      # → specs
+│   │   │   ├── spec-store.ts      # → specs（含 theme_id）
 │   │   │   └── thread-store.ts    # → threads（会话持久化）
 │   │   ├── index.ts               # getKernel()（globalThis 单例 + KERNEL_VERSION）
 │   │   └── selftest.ts
@@ -164,7 +165,8 @@ shizurak/
 │   ├── components/
 │   │   ├── ui/                    # shadcn 基座（复制自持，禁止整体升级覆盖）
 │   │   ├── fx/                    # 特效组件（Nebula / Starfield / HudGrid / Reticle...）
-│   │   ├── genui/                 # catalog.ts（Zod）· registry-hud/ · registry-clean/ · Renderer 封装
+│   │   ├── genui/                 # catalog.ts（Zod 唯一真源）· registry-hud/ · registry-clean/
+│   │   │                          #   · registry-server/（RSC 组件变体）· Renderer 封装 · action-contract.ts
 │   │   ├── site/                  # nav / footer / post-card / toc / comments(Waline)...
 │   │   └── admin/                 # 编辑器 / diff 审核 / 素材列表...
 │   ├── themes/                    # void/ · lumen/ · reserved/ · contract.ts · registry.ts
@@ -200,6 +202,7 @@ export function getKernel(): Promise<Context>   // async：await 插件 fiber �
 | `model-adapter` | `ai.models` | 模型注册表：chat / embedding / title 模型；经 AI SDK v7 `createOpenAICompatible` 指向 **LiteLLM 网关**；**线程级 prompt caching**（`promptCacheKey = threadId`，system+tools 前缀复用）；reasoning parts 透传（思考可视化）；暴露 token 计量回调 | env: `LITELLM_BASE_URL` / `LITELLM_KEY`（虚拟 key + 预算） |
 | `tool-registry` | `ai.tools` | 领域工具注册（含权限级别 L0/L1/L2 元数据）；**官方 MCP 客户端 `createMCPClient`**（`@ai-sdk/mcp`：Streamable HTTP/SSE/stdio + OAuth + 会话重连；Later：blog-as-MCP 反向暴露）；工具执行统一入口（审计 + 计量） | db queries · search · @ai-sdk/mcp |
 | `mastra-engine` | `workflows` | Mastra 工作流注册与执行：`content-pipeline`（素材→草稿）· `ingest-pipeline`（摄取清洗）· `index-pipeline`（嵌入索引）· `translate-pipeline`（i18n 预留） | Mastra · model-adapter |
+| `genui-router` | `ai.genui` | **三引擎统一注册与路由**（json-render / OpenUI / RSC）：`GenUIEngine` 契约 + 路由表生成系统提示词（详见 [05](./05-harness-spec.md) §3–§5） | model-adapter · spec-store |
 | `content-agent` | `content` | 作者侧能力：`materialToDraft()` · `suggestReplies(comments)` · `summarize()` · `seoMeta()` · 维护任务 | workflows · ai.models |
 | `spec-store` | `specs` | GenUI spec 持久化与分享（`genui_specs` 表）：`save()` / `load(id)` / `share(spec)` | db |
 | `thread-store` | `threads` | 会话持久化（`agent_threads` / `agent_messages`）：`append()` / `history(threadId)` / 访客哈希归并 | db |
@@ -227,7 +230,7 @@ export function getKernel(): Promise<Context>   // async：await 插件 fiber �
 |------|--------------|------|
 | `ui-actions` | `actions` | UI 动作注册表：`register(action)` / `invoke(id, params)` / `list()`；动作带级别（L0 只读 / L1 本地可逆 / L2 需确认）；L2 动作进入 `agent-store.pendingActions` 等待确认卡 |
 | `page-context` | `pageContext` | 页面注册上下文 Provider（文章页注册 `{type:'post', id, title, tags, excerpt}`；项目页注册项目档案）；序列化注入每次 chat 请求 |
-| `component-kit` | `genui` | GenUI 运行时：json-render catalog registry（按主题解析 hud/clean 变体）+ OpenUI 组件库注册；`render(spec)` 统一入口 |
+| `component-kit` | `genui` | GenUI 运行时：三引擎客户端渲染器统一入口——json-render catalog registry + OpenUI 组件库注册 + RSC 组件的 `'use client'` 岛接 `ui-actions`（RSC 服务端渲染细节见 05 §4）；`render(payload)` 按 `engine` 分派 |
 | `theme-bridge` | `themeBridge` | 订阅 theme-store；主题切换时通知 GenUI 渲染器原地换装；提供 `currentVariant()` |
 
 前端内核同样 `globalThis` 单例 + `whenKernelReady()` 竞速保护（照搬 cross-dashboard 模式）。
@@ -277,41 +280,41 @@ useChat (DefaultChatTransport)
 
 **安全默认**（v7 `allowSystemInMessages` 默认关闭——system 消息注入被拒）：page-context / 主题 / locale 等动态上下文一律以 **user/context part** 注入，绝不拼进 system 提示——防提示注入的第一道结构防线。
 
+> 上图为 **chat 主链（Data Stream）**。文章段落 hover「问 AI 这一段」这类**页内一次性展示**不走本链，而是经 **RSC Server Action 专通道**（§5.5 / 05 §4）——零客户端 JS、不占用会话上下文窗口。
+
 **限流与成本闸**（公开 agent 的安全底线，三重）：
 1. **Redis 令牌桶**：单 IP 10 req/min、30 req/h；全局 500 req/h（`blog:` 前缀）
 2. **LiteLLM 虚拟 key 预算**：月预算上限，超限自动熔断（网关侧强制）
 3. **`stopWhen: stepCountIs(12)`**：单次对话最多 12 步工具循环（对齐 FlowMind `MAX_AGENT_STEPS`）
 
-### 5.2 GenUI 双引擎管线
+### 5.2 GenUI 三引擎管线
+
+> 完整引擎契约（`GenUIEngine` 接口）、**传输互斥律**与路由决策表见 [05 · Agent Harness 规范](./05-harness-spec.md) §3–§5；此处只给管线全貌。
 
 ```
-用户意图 ──▶ 内核路由（generateUI 工具 / 系统提示决策）
+用户意图 ──▶ genui-router（内核插件；路由表生成系统提示词）
               │
-    ┌─────────┴──────────┐
-    ▼                    ▼
-json-render 链路        OpenUI 链路
-（数据仪表）            （即兴画布）
-    │                    │
-系统提示内嵌 catalog   系统提示 = 从组件库生成（prompt generation）
-（Zod schema 序列化）        │
-    │                    │
-LLM 输出 JSON spec     LLM 流式输出 OpenUI Lang
-（JSONL patch 流）          │
-    │                    │
-@json-render/react     @openuidev/react-lang
-Renderer + StateProvider   Renderer（渐进解析）
-    │                    │
-    └─────────┬──────────┘
-              ▼
-    component-kit.render(spec)
-    → theme-bridge 解析皮肤变体（hud/clean）
+    ┌─────────┼──────────────────────┐
+    ▼         ▼                       ▼
+json-render  OpenUI Lang             RSC（ai/rsc streamUI · Server Action）
+（数据仪表） （即兴画布）             （服务端直出 · 零客户端注册表）
+    │         │                       │
+spec JSONL   Lang 逐行                服务端 yield <ServerComponent/>
+@json-render/ @openuidev/react-lang   RSC payload 流（Suspense 挂载）
+react Renderer                        │
+    │         │                       │
+    └────┬────┴───────────────────────┘
+         ▼
+    component-kit / registry-server
+    → theme-bridge 解析皮肤变体（hud/clean；RSC 走服务端 variant）
     → 流式显现（theme.genui.streamReveal）
 ```
 
-**路由决策规则**（写入系统提示）：
+**路由决策规则**（详见 05 §5，写入系统提示）：
 - 涉及**站点真实数据**（文章/项目/奖项/统计）→ **必须 json-render**（工具取数 → 绑定 `$state`，schema 校验保证不出错）
 - 涉及**解释/探索/即兴**（对比、演示、可视化创意）→ **OpenUI**（token 效率 + 流式体验）
-- 两者可混排（对话中先文本、再 json-render 数据卡、再 OpenUI 探索块）
+- 涉及**一次性展示 / 页内一键解释 / SEO 可索引分享页 / OG / 首屏直出** → **RSC**（`server-action-rsc` 专通道）
+- 三者可混排；`channel` 维度区分：chat 会话默认 Data Stream，页内/首屏/分享走 RSC 专通道
 
 **spec 持久化**：有价值的 GenUI 产物经 `specs.save()` 落库，可生成分享页 `/lab/s/[id]`（`specs.share()`）——「三层动态产物」的博客版（一次性回答 → 可分享页面）。
 
@@ -344,6 +347,17 @@ Renderer + StateProvider   Renderer（渐进解析）
 
 红线：**访客侧 agent 永远没有 L2 以上的能力**（无 DB 写、无发布、无删除）；作者侧 agent 的发布动作同样走确认。
 
+### 5.5 RSC GenUI 通道（与 chat 主链并列）
+
+除 §5.1 的访客对话主链（Data Stream / `useChat`）外，Harness 提供第二条通道：**Server Action + `ai/rsc` `streamUI`**——服务端直接 `yield` 已渲染的 React 组件，客户端零注册表、零额外 JS、SEO 可索引。
+
+- **专用于**：页内一键解释（段落 hover → Server Action → RSC 卡浮现）、`/lab/s/[id]` 分享页首屏、OG/社交图、首页 SSR 直出 GenUI 卡
+- **传输互斥律**：一次请求只选一条传输（Data Stream 或 RSC），不混发——访客 chat 恒走 Data Stream（保住 theme-bridge 原地换肤与 L2 确认卡）
+- **主题感知**：RSC 侧经 cookie 读 `ResolvedTheme`（`lib/themes/ssr.ts`），选 `registry-server` 的 hud/clean 变体
+- **交互回环**：RSC 组件内嵌 `'use client'` 岛 → `ui.actions.invoke`，与 Data Stream 共享同一动作注册表与权限模型
+
+完整设计（伪码/契约/span/预算）见 [05 · Agent Harness 规范](./05-harness-spec.md) §4。
+
 ---
 
 ## 6. 内容管线
@@ -353,9 +367,9 @@ Renderer + StateProvider   Renderer（渐进解析）
 遵循生态列规范：`uuid v7` 主键（应用层生成）· `created_at/updated_at timestamptz(6)` · `deleted_at` 软删 · 归属列（`author_id`）。
 
 ```
-posts              id · slug(uniq) · title · summary · content_md · content_html(编译产物)
+posts              id · slug(uniq) · title · summary · content_md · content_html(编译产物) · toc(jsonb)
                    status(draft|review|published|archived) · type(post|project|note)
-                   locale('zh'|'en') · cover_media_id · ai_involvement(human|assisted|generated)
+                   locale('zh'|'en') · translation_of(self uuid) · cover_media_id · ai_involvement(human|assisted|generated)
                    published_at · reading_time · search_vector(tsvector) · embedding(vector 1024, v2)
                    author_id · created_at · updated_at · deleted_at
 post_revisions     id · post_id · content_md · editor(human|agent:<model>) · note · created_at
@@ -363,7 +377,7 @@ materials          id · source(vault|manual|agent) · source_path · raw_md · 
                    tags(text[]) · created_at
 tags / post_tags   标准多对多
 media              id · minio_key · mime · width · height · size · blurhash · alt · created_at
-genui_specs        id · kind(json-render|openui) · spec(jsonb) · source(visitor|author) · thread_id
+genui_specs        id · kind(json-render|openui|rsc) · spec(jsonb) · theme_id · source(visitor|author) · thread_id
                    · shared(bool) · created_at · expires_at
 agent_threads      id · kind(visitor|author) · visitor_hash · title · created_at
 agent_messages     id · thread_id · role · parts(jsonb) · model · tokens_in · tokens_out · created_at
@@ -379,6 +393,7 @@ settings           key(PK) · value(jsonb)          # 站点配置 KV
 
 - 存储：`content_md`（Markdown + MDX 扩展语法，作者独占可信来源——**仅作者可写，无访客输入进编译**，安全边界清晰）
 - **发布时编译**（content-pipeline 末步）：unified 管线 `remark-gfm → remark-math → rehype-katex → shiki 双主题 → rehype-slug → toc 提取` → 产物存 `content_html` + `toc(jsonb)`
+- **双份产物（不可变审计）**：编译产物 HTML 存 PG `content_html` 供渲染；发布时的原始 MDX 快照落 MinIO（`mdx-snapshot/<slug>/<rev>`），使「某版本发布时长什么样」可复原——比 `post_revisions` 只存 markdown 更强的审计
 - 运行时零编译开销；`use cache` + `cacheTag('post:<slug>')` 直接读编译产物
 - 交互式 MDX 组件（`<Demo>` 等）例外：保留 RSC 运行时渲染（组件白名单固定，不经 DB）
 - Shiki 双主题：`themes: { light: 'github-light', dark: 'github-dark' }` + CSS variables，跟随站点主题切换零重渲染
@@ -541,10 +556,11 @@ k3s 集群
 | A1 | 内容 SSOT 在 PG，不直连 CouchDB/vault | LiveSync 库是同步状态机（eden 分块私有格式），读写皆险；rak-core 明文副本是最稳集成点 |
 | A2 | 内建 Agent-CMS 而非 git-MDX | 「Agent 管线优先」要求结构化的素材→草稿→审核→发布状态机；Git 无法表达审核工作流 |
 | A3 | 复用 cross-dashboard 的 Cordis vendor | 已生产验证的心智模型；同构双层（服务端/浏览器）一套心智；MIT 可 vendor |
-| A4 | json-render + OpenUI 双引擎而非二选一 | 确定性（数据）与生成性（探索）是两种任务，工具应对应任务而非统一 |
+| A4 | GenUI **三引擎**（json-render + OpenUI + RSC）而非二选一 | 确定性（数据）、生成性（探索）、服务端直出（一次性/SEO）是三类任务，工具应对应任务（见 05 §3–§5） |
 | A5 | 鉴权走 RSC 而非 proxy | Next 16 官方立场：proxy 是最后手段；`getSession` 在 layout 层天然正确且可测 |
 | A6 | 发布时编译 MDX 而非运行时 | 运行时零编译开销；`use cache` 直接读产物；编译失败的反馈在发布时而非访客侧 |
 | A7 | 自研埋点而非 Umami | 数据直接进 agent 工具链（GenUI 数据卡）；~百行成本换取零集成摩擦 |
 | A8 | 限流三重闸（Redis + LiteLLM 预算 + stepCountIs） | 公开 agent 是成本敞口；三重独立防线，任何一层失效不致命 |
 | A9 | i18n 第一天就走 `app/[lang]/` + 字典模式（官方指南标准） | 「预适配」的正确姿势：加语言 = 加内容而非重构；`use cache` 自动按 locale 分缓存键；不引 next-intl（内置方案即最佳实践） |
 | A10 | Harness 用 v7 `ToolLoopAgent` + 官方 `createMCPClient`，不手写循环 | 官方 Agent 抽象自带审批/步数/缓存钩子（toolApproval/stopWhen/prepareCall）；MCP 官方客户端免费获得 OAuth 与会话重连；手写循环零收益纯风险 |
+| A11 | RSC GenUI 与 Data Stream **混合拓扑**，不整体切 RSC | AI SDK 传输互斥律：chat 保 Data Stream（theme-bridge 原地换肤 + L2 确认卡），RSC 仅用于页内/首屏/分享页/OG（见 05 §4.2） |

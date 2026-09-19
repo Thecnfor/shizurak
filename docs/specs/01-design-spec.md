@@ -2,7 +2,7 @@
 
 > 项目：**shizurak**（blog.xrak.top）— 伍泽凯个人博客
 > 状态：定稿候选 v1 · 2026-09-19
-> 关联：[架构规范](./02-architecture-spec.md) · [状态管理规范](./03-state-spec.md) · [依赖规范](./04-dependency-spec.md)
+> 关联：[架构规范](./02-architecture-spec.md) · [状态管理规范](./03-state-spec.md) · [依赖规范](./04-dependency-spec.md) · [Harness 规范](./05-harness-spec.md)
 
 ---
 
@@ -110,6 +110,9 @@ export interface ThemeGenUI {
 
 export interface Theme {
   meta: ThemeMeta
+  /** 继承另一主题（可选）：新主题只需覆写四层中任意一层，
+   *  其余从基座浅合并。例：terminal = extends 'void' + tokens override */
+  extends?: string
   tokens: ThemeTokens
   motion: ThemeMotion
   effects: ThemeEffects
@@ -131,9 +134,9 @@ src/themes/
 └── reserved/            # terminal / paper / cyber 的占位清单
 ```
 
-> 引擎（解析/注入）在 `src/lib/themes/`（`resolve.ts` 纯函数 · `css.ts` 变量注入），主题定义目录只做声明——**定义与引擎分离**（架构规范 §3 边界规则）。
+> 引擎（解析/注入）在 `src/lib/themes/`（`resolve.ts` 纯函数 · `css.ts` 变量注入 · `inject.ts` RSC 直出 · `ssr.ts` cookie→ResolvedTheme 供 RSC 通道），主题定义目录只做声明——**定义与引擎分离**（架构规范 §3 边界规则）。
 
-解析顺序：`registry[id]` → 应用用户 overrides（§1.5）→ 按当前 mode 取 tokens → 输出 `ResolvedTheme`（tokens 合并 + motion 缩放 + effects 强度覆盖）。**解析是纯函数**，可在 RSC 与客户端同构运行。
+解析顺序：`registry[id]` → **若 `extends` 先浅合并基座主题**（子覆写的层胜出）→ 应用用户 overrides（§1.5）→ 按当前 mode 取 tokens → 输出 `ResolvedTheme`（tokens 合并 + motion 缩放 + effects 强度覆盖 + `previousResolved` 供特效层 fade-out 卸载旧层）。**解析是纯函数**，可在 RSC 与客户端同构运行（RSC 侧经 `ssr.ts` 从 cookie 解析）。
 
 ### 1.4 运行时切换机制
 
@@ -147,7 +150,8 @@ src/themes/
 - **主题与模式是正交两维**：`data-theme`（主题人格）× `data-mode`（明暗）。单模主题（void）忽略模式切换器；双模主题（lumen）的切换器含 明/暗/跟随系统 三态（next-themes 原生）
 - 切换入口统一走 `theme-store.setTheme(id)`，由 store 同步写 `next-themes`（`setTheme`）——**禁止组件直接调 next-themes**
 - 切换时：tokens 立即生效（CSS 变量）；特效层异步换装（旧特效 fade out → 卸载 → 新特效 dynamic import → fade in），过渡 ≤ 400ms
-- 首屏：`data-theme` 由 next-themes 内联脚本在 hydration 前写入，特效层在 `requestIdleCallback` 后启动（不阻塞 LCP）
+- 首屏：**RSC 直出 tokens**——服务端把当前 mode 的 CSS variables 直接写进 `<html style={...}>`（`inject.ts`），`data-theme` 由 next-themes 内联脚本在 hydration 前写入；零 FOUC / 零 CLS，特效层在 `requestIdleCallback` 后启动（不阻塞 LCP）
+- 切主题时 tokens 生效方式：替换 `<style id="theme-tokens">` 节点（而非逐条改行内 style），**< 40ms**（§10）
 
 ### 1.5 个性化微调系统（顶尖个性化自定义）
 
@@ -167,6 +171,8 @@ export interface ThemeOverrides {
 - 分享码：`?theme=void&ov=<base64url(JSON)>`（nuqs 解析，进入页面即还原）
 - 微调面板 UI：主题切换器内的「高级」抽屉，实时预览（滑块拖动即时生效）
 - **accent 色相旋转用 OKLCH 空间**（`oklch(from var(--accent) l c calc(h + var(--hue-rotate)))`），避免 HSL 旋转导致的感知亮度跳变
+- `@property --hue-rotate` 注册为 `<angle>` 类型 → 色相旋转本身可 `transition` 动画（不是硬跳）
+- **theme:check 全角度校验**：色相旋转到 −180..180 任意角度都不得跌破边框 3:1 / 正文 7:1 对比度（OKLCH 的 L 分量旋转时不自动补偿，黄区尤易破线）
 
 ### 1.6 主题分包与性能（架构红利）
 
@@ -337,16 +343,17 @@ export interface ThemeOverrides {
 
 ## 6. 动效语法（Motion Grammar）
 
-### 6.1 GSAP × Motion 分工律（铁律 L4 展开）
+### 6.1 三系统分工律（GSAP × motion × ViewTransition，铁律 L4 展开）
 
 | 系统 | 管辖 | 典型场景 |
 |------|------|----------|
-| **GSAP** | 时间线编排、滚动驱动（ScrollTrigger）、Canvas/Shader、SVG 路径、页面转场（FLIP）、文字分割（SplitText） | 发射序列、滚动叙事、星云 uniform 驱动、路由转场、标题逐字显现 |
-| **motion** | React 状态驱动的出现/消失（AnimatePresence）、布局动画（layout）、手势（drag/hover/tap）、列表增删 | GenUI 卡片流式入场、对话框、列表重排、按钮反馈、Tab 切换 |
+| **GSAP** | 时间线编排、滚动驱动（ScrollTrigger）、Canvas/Shader、SVG 路径、**同页** FLIP 重排、文字分割（SplitText） | 发射序列、滚动叙事、星云 uniform 驱动、标题逐字显现 |
+| **motion** | React 状态驱动的出现/消失（AnimatePresence）、**同页**布局动画（`layout` / `layoutId`）、手势（drag/hover/tap）、列表增删 | GenUI 卡片流式入场、对话框、同页列表重排、按钮反馈、Tab 切换 |
+| **React `<ViewTransition>`** | **跨页 shared element morph**、Suspense reveal、方向性导航、主题切换整站 morph（原生、声明式、零额外依赖） | 文章卡→文章页 hero、星空层跨页持续、void↔lumen 换肤 morph |
 
-**所有权边界**：元素进入「场景编排」归 GSAP（`useGSAP` scope）；元素进入「状态响应」归 motion（variants）。同一个组件可同时用两者，但**同一元素同一属性不得双写**——如卡片入场由 GSAP 完成后，后续 hover 反馈交 motion（GSAP timeline `onComplete` 后移除 inline 属性）。
+**所有权边界**：元素进入「场景编排」归 GSAP（`useGSAP` scope）；「状态响应」归 motion（variants）；「跨路由同一性」归 ViewTransition（`name` 匹配）。同一元素同一属性不得双写——如卡片入场由 GSAP 完成后，后续 hover 反馈交 motion（GSAP timeline `onComplete` 后移除 inline 属性）。**跨页转场不再用 GSAP Flip**（Flip 退居「同页重排」）。
 
-**GSAP 插件清单**（3.15 起全部免费）：ScrollTrigger · SplitText · Flip · CustomEase · Observer。`gsap.registerPlugin()` 在 `lib/motion/gsap.ts` 统一执行；每主题的 `motion.gsap.defaults` 在主题切换时写入 `gsap.defaults()`。
+**GSAP 插件清单**（3.15 起全部免费，Webflow 收购后无 Club 门槛）：ScrollTrigger · SplitText · Flip · CustomEase · Observer。`gsap.registerPlugin()` 在 `lib/motion/gsap.ts` 统一执行；每主题的 `motion.gsap.defaults` 在主题切换时写入 `gsap.defaults()`。
 
 ### 6.2 编排模式（每主题按人格取用）
 
@@ -354,26 +361,40 @@ export interface ThemeOverrides {
 |------|-------------------|------------------|
 | 页面入场 | 场景序列：背景先行 → 标题 decode → 内容 stagger 上浮（总 1.2–1.6s） | 统一 fade+8px 上浮，stagger 40ms（总 ≤ 400ms） |
 | 滚动叙事 | ScrollTrigger scrub 视差 + pin 章节（scrollIntensity 0.9） | 仅 IntersectionObserver 淡入（0.15） |
-| 路由转场 | View Transitions API + Flip：星空层跨页持续，内容层 FLIP | 快速 fade（150ms） |
+| 路由转场 | **React `<ViewTransition>`**：星空层跨页持续（`view-transition-name: fx-root`）+ 内容 shared element morph + `nav-forward/nav-back` 方向感 | 快速 fade（150ms，同用 ViewTransition `default="none"` 精准命名） |
 | 微交互 | hover 辉光 + 刻度线响应（120ms） | hover 微缩放 + 背景变化（100ms） |
 | 文字 | SplitText 逐字 decode | 整体 fade |
 
 ### 6.3 reduced-motion 降级表
 
-`prefers-reduced-motion: reduce` 时**全局强制**：所有 GSAP 时间线 `timeScale(1000)` 直达终态或替换为 ≤150ms opacity 过渡；视差/scrub 关闭；自动播放的循环动画（星野漂移除外——纯环境运动保留但减速 50%）。降级逻辑在 `lib/motion/reduced.ts` 统一封装，组件不得自行判断。
+`prefers-reduced-motion: reduce` 时**全局强制**：所有 GSAP 时间线 `timeScale(1000)` 直达终态或替换为 ≤150ms opacity 过渡；视差/scrub 关闭；自动播放的循环动画（星野漂移除外——纯环境运动保留但减速 50%）。ViewTransition 用 `@media (prefers-reduced-motion: reduce) { ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation-duration: 0s !important } }` 一键静态化。降级逻辑在 `lib/motion/reduced.ts` 统一封装，组件不得自行判断。
+
+### 6.4 跨页转场与主题 morph（View Transitions）
+
+本项是「太空歌剧高级感」最狠的一抹原生利器（React 19.2 + Next 16.3.5 App Router 无配置可用）：
+
+- **跨页 shared element**：列表卡与详情页 hero 包同名 `<ViewTransition name={`post-${slug}`}>`——点卡即 morph 到文章页，返回反向；无 VT 支持的浏览器自然降级为普通导航
+- **星空层跨页持续**：`FxLayer` 根节点 `style={{ viewTransitionName: 'fx-root' }}` + `::view-transition-old(fx-root){ display:none }`——背景不动、内容变
+- **方向感导航**：`<Link transitionTypes={['nav-forward']}>` / `['nav-back']`，CSS 伪元素分派左滑/右滑；命令面板跳转用自定义 `nav-command`（void 上是 HUD 引导感）
+- **Suspense reveal**：骨架屏 `exit="slide-down"` + 内容 `enter="slide-up"`，非对称时长（退场快、入场缓，官方指南 Step 2）
+- **主题切换整站 morph**：`setTheme` 包一次 `document.startViewTransition(() => apply(...))`——切角→圆角、深空→白底、accent 全站的 **一次性跨主题 morph**（可能最炸的一个体验设计）
+- **保持可交互**：`::view-transition { pointer-events: none }`，避免转场期间丢点击；转场时长控短
+- lumen 滚动进度条用 **CSS 原生 `animation-timeline: scroll(root)`**（零 JS），与「零特效代码」承诺一致
 
 ---
 
 ## 7. GenUI 视觉规范
 
-### 7.1 双引擎职责（视觉层视角）
+### 7.1 三引擎职责（视觉层视角）
 
-| | json-render | OpenUI |
-|---|-------------|--------|
-| 视觉定位 | **数据仪表**：绑定真实数据的结构化卡片 | **即兴画布**：对话式探索的动态界面 |
-| 组件规模 | 精选 ~15 个领域组件（少而精） | ~25 个（含布局原语，组合自由） |
-| 流式显现 | JSONL patch 增量渲染，新节点 stagger 入场 | OpenUI Lang 逐行渲染，`decode`/fade 显现 |
-| 视觉锚点 | 数据准确性、可扫读 | 惊喜感、可探索 |
+| | json-render | OpenUI | **RSC** |
+|---|-------------|--------|---------|
+| 视觉定位 | **数据仪表**：绑定真实数据的结构化卡片 | **即兴画布**：对话式探索的动态界面 | **服务端直出**：一次性展示 / SEO 分享页 / OG |
+| 组件规模 | 精选 ~15 个领域组件（少而精） | ~25 个（含布局原语，组合自由） | 与上两者**共用同一 catalog**（registry-server 变体） |
+| 流式显现 | JSONL patch 增量渲染，新节点 stagger 入场 | OpenUI Lang 逐行渲染，`decode`/fade 显现 | Server Action 流 + Suspense 挂载（客户端零注册表） |
+| 视觉锚点 | 数据准确性、可扫读 | 惊喜感、可探索 | 首屏即正确、可被搜索引擎索引 |
+
+> 三引擎的**唯一 catalog 真源**与路由规则见 [05 · Agent Harness 规范](./05-harness-spec.md) §3–§5；皮肤变体（hud/clean）由 theme-bridge 统一解析。
 
 ### 7.2 json-render 组件目录（博客领域 catalog）
 
@@ -385,7 +406,8 @@ export interface ThemeOverrides {
 
 - GenUI **spec 与皮肤分离**：spec 只含语义数据，皮肤在渲染时由当前主题决定
 - `<Renderer>` 的 registry 按 `theme.genui.catalogVariant` 解析到 `hud` 或 `clean` 组件实现
-- 主题切换时：已渲染的 GenUI 卡片**原地换装**（motion layout 动画过渡，不重新请求）
+- 主题切换时：已渲染的 GenUI 卡片**原地换装**（motion layout 动画过渡，不重新请求）——**仅 Data Stream 通道（json-render/openui）**
+- **RSC 通道换肤规则**：RSC 无客户端状态，切主题不能原地换肤——服务端按 cookie 的 `ResolvedTheme` 选 `registry-server` 变体重渲染（访客主题不变时首屏直出已正确，无需重放）
 - 流式显现节奏取 `theme.genui.streamReveal`（void: decode 24ms / lumen: fade 30ms）
 
 ### 7.4 流式视觉节奏
@@ -393,6 +415,11 @@ export interface ThemeOverrides {
 - 生成中：骨架屏用主题化的「扫描」形态（void: 扫描线扫过切角框 / lumen: 柔和 shimmer）
 - 首个 token 到达 ≤ 800ms（P50）；期间显示思考态（void: 遥测文字轮播 / lumen: 三点脉冲）
 - 长回答：分段显现，每段完成即固定（不整篇等完）；表格/图表最后锚定
+
+### 7.5 OG 图与分享同源
+
+- OG / 社交图不再手写模板：优先用 **`@json-render/image`** 直接渲染「分享方当时那份 spec」（`spec-store` 取 spec + `theme_id`）——OG 与站点 GenUI 卡片**完全同源**，切换主题 OG 跟着换肤（void: 深空 + HUD 框 / lumen: 大字排版）
+- 分享 URL 携带 `?theme=<id>&ov=<base64url>`，接收方还原分享方当时的视觉（设计规范 §1.5）
 
 ---
 
@@ -417,7 +444,8 @@ export interface ThemeOverrides {
 - 侧边：TOC 滚动高亮（移动端折叠为浮动按钮）
 - 头部元信息：日期 / 阅读时间 / 标签 / **AI 参与度徽章**（铁律 L5）
 - 结尾：「问 AI 关于这篇文章」入口（page-context 注入文章，GenUI 回答）+ 相关文章 + Waline 评论区
-- OG 图：ImageResponse 动态生成，主题化模板（void: 深空 + HUD 框 / lumen: 大字排版）
+- 段落级「问 AI 这一段」：hover 触发 **RSC Server Action**（页内一键解释，零客户端 JS，不走 chat 主链，见 05 §4）
+- OG 图：`@json-render/image` 渲染分享方 spec（主题化，与站点 GenUI 同源，§7.5）
 
 ### 8.3 项目页（`/projects`）
 
@@ -431,7 +459,7 @@ export interface ThemeOverrides {
 
 ### 8.5 实验室（`/lab`）
 
-GenUI playground：访客直接体验双引擎（预设 prompt 画廊 + 自由输入），展示 json-render 与 OpenUI 的能力差异。同时是 blog-as-MCP 的演示面。
+GenUI playground：访客直接体验**三引擎**（预设 prompt 画廊 + 自由输入），展示 json-render（数据）、OpenUI（即兴）与 **RSC（服务端直出）** 的能力差异。同时是 blog-as-MCP 的演示面。`/lab/s/[id]` 分享页首屏走 RSC（SEO 可索引）。
 
 ### 8.6 管理台（`/admin`）
 
@@ -458,18 +486,62 @@ GenUI playground：访客直接体验双引擎（预设 prompt 画廊 + 自由�
 
 | 指标 | 目标 | 红线 |
 |------|------|------|
-| First-load JS（lumen 首页） | ≤ 170KB gz | 200KB |
-| First-load JS（void 首页，不含特效层） | ≤ 190KB gz | 220KB |
+| First-load JS（lumen 首页） | ≤ **140KB** gz | 180KB |
+| First-load JS（void 首页，不含特效层） | ≤ **160KB** gz | 200KB |
 | 特效层 JS（idle 后加载） | ≤ 45KB gz | 60KB |
 | LCP（4G / 中端机） | ≤ 2.0s | 2.5s |
-| CLS | ≤ 0.05 | 0.1 |
+| CLS（RSC 直出 tokens 后） | ≤ 0.02 | 0.1 |
 | INP | ≤ 200ms | 300ms |
-| 主题切换（tokens 生效） | < 100ms | 200ms |
+| 主题切换（tokens 生效） | **< 40ms** | 100ms |
 | 中文字体单片 | ≤ 100KB | 150KB |
 | WebGL 首帧启动 | ≤ 150ms | 300ms |
-| agent 首 token（P50） | ≤ 800ms | 1.5s |
+| agent 首 token（P50） | **≤ 350–500ms** | 1.2s |
+| RSC GenUI 服务端渲染 | ≤ 400ms（P95 800ms） | 1.2s（超时降级纯文本） |
 
-CI 门禁：Lighthouse CI（移动端）+ `pnpm size`（包体）+ `theme:check`（主题契约）。任何超预算的 PR 阻断合并。
+CI 门禁：Lighthouse CI（移动端 Slow 4G）+ `size-limit` + `pnpm size`（bundle-analyzer）+ `theme:check`（主题契约，含 OKLCH 全角度对比度 / 焦点可见性 / hover-only 检测）。任何超预算的 PR 阻断合并。
+
+---
+
+## 11. 浮层体验契约（Overlay Contract）
+
+浮层不是“弹窗几个框”，而是一套**跨主题一致的层级与行为契约**（Agent Dock / ⌘K / GenUI hover 卡 / L2 确认卡 / toast 共享同一套规则）。
+
+### 11.1 z-index 语义分层（职责而非数字）
+
+| 层 | z | 内容 | 约束 |
+|----|:--:|------|------|
+| 特效层 | **-10** | starfield / nebula / scanline / reticle | 永远 `z<0`、`aria-hidden`、`pointer-events: none`；不参与 stacking |
+| 内容层 | 0 | 正文 |
+| 粘性头/尾 | 10 | nav / footer |
+| HUD 装饰 | 20 | 遥测条 / 阅读进度条 / 坐标刻度 | 静态、不可交互、`aria-hidden` |
+| GenUI 内联浮层 | 30 | tooltip / hover 卡 |
+| Agent Dock | 40 | 浮动/停靠两态（modeless） |
+| Modal / ⌘K | 50 | 命令面板 / 对话框（modal） |
+| Toast / 确认卡 | 60 | L2 审批 / 轻提示 |
+
+**关键边界**：特效层与浮层不同一 stacking context（前者恒 z<0，后者从 z-20 起）——HUD 感与内容感不打架。
+
+### 11.2 Agent Dock 三态
+
+`hidden → floating（右下角，收起是 HUD 呼吸环 + 遥测脉冲）→ docked（右侧 480px，与内容并列）`。
+
+- 用 **React `<Activity>`** 承载：切页时 Dock 不 remount，输入草稿 / 滚动位置 / 已生成 spec 全保留（effects 自动 cleanup）
+- **主题切换时 Dock 位置与草稿完全不变**（`<Activity>` 保证）
+- modeless：`aria-describedby` 而非 `aria-modal`（不捕焦点，不阻断阅读）
+- lumen 下 floating 态是细边框圆点，**零特效代码**
+
+### 11.3 通用浮层基座（`components/ui/*`）
+
+- 一律 **Radix Portal → `document.body`**（避开 stacking context 灾难）
+- **主题化阴影**：`shadow-[var(--overlay-shadow)]`（void: glow + 1px accent 描边 / lumen: 柔和 shadow）；焦点环取 `--focus-ring-color`
+- **入场动效**：Radix `data-[state=open]` + motion variants（不用 GSAP），走主题 `motion.spring.ui`
+- **reduced-motion**：只 opacity，不 translate
+- **a11y**：modal 类焦点陷阱 + `aria-modal="true"` + `Esc` 关闭 + 触发元素焦点归位；Dock 例外（modeless）
+
+### 11.4 L2 审批卡（Harness 浮层的主题化延伸）
+
+- 来自 `UiAction.preview`（[05 §6.2](./05-harness-spec.md)）——title / summary / riskNote 经当前主题渲染：void = 红色切角告警框 + 遥测风“批准/拒绝”；lumen = 柔和 modal
+- 进入 `agent-store.pendingActions` 队列，z-60；批准后执行一次
 
 ---
 
@@ -483,3 +555,8 @@ CI 门禁：Lighthouse CI（移动端）+ `pnpm size`（包体）+ `theme:check`
 | D4 | 特效全部走 `effects.load()` 分包 | 「炫技」与「性能」不互斥的架构保证 |
 | D5 | accent 微调用 OKLCH 旋转 | HSL 旋转亮度跳变毁质感 |
 | D6 | MiniChart 自绘 SVG 不引图表库 | 主题一致性 + 包体预算；图表库的默认样式无法跨主题统一 |
+| D7 | 跨页转场用原生 ViewTransition，GSAP Flip 退居同页 | React 19.2 + Next 16 无配置可用；声明式、零额外依赖、与 VT 伪类配合 |
+| D8 | 主题切换包一次 `document.startViewTransition` | 整站跨主题 morph 是“两种宇宙”的最强体感表达 |
+| D9 | 浮层独立成 §11 契约 | HUD 感与内容感不打架；Agent Dock 三态 + L2 审批卡跨主题一致 |
+| D10 | 主题支持 `extends` 浅合并 | “新增主题 = 5 步”降到 2-3 步；四层可单独复用 |
+| D11 | OG 图用 `@json-render/image` 渲染分享 spec | 数据/OG 同源；不手写模板且随主题换肤 |
