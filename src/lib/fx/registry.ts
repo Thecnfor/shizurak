@@ -14,9 +14,9 @@ export const fxRegistry: Partial<
     { loader: () => Promise<ComponentType<FxProps>>; minTier: FxTier }
   >
 > = {
-  // 契约 v2：按 renderer 分派。rift-layer 暂以 starfield 占位，Task 3 替换为真正的幕层。
+  // 契约 v2：唯一常驻幕层。minTier=low——lite 档也进组件，CSS 呼吸兜底在 RiftLayer 内部。
   "rift-layer": {
-    loader: () => import("@/components/fx/starfield").then((m) => m.Starfield),
-    minTier: "mid",
+    loader: () => import("@/components/fx/rift-layer").then((m) => m.RiftLayer),
+    minTier: "low",
   },
 };

@@ -70,8 +70,8 @@ h3 {
 ::view-transition {
   pointer-events: none; /* 转场期间不吞点击 */
 }
-/* 星空特效层跨页持续：背景不动、内容变 */
-[data-fx="starfield"],
+/* 幕层（rift canvas）跨页持续：幕不断，幕面换（spec §2.2 铁律 4） */
+[data-rift],
 [data-fx="fallback"] {
   view-transition-name: fx-root;
 }
@@ -81,6 +81,17 @@ h3 {
 }
 ::view-transition-old(fx-root) {
   display: none;
+}
+
+/* lite 档幕面呼吸（无 WebGL 时的 CSS 兜底，Task 4 在此基础上补全底噪） */
+@keyframes rift-breath {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.015);
+  }
 }
 
 /* 方向性导航（<Link transitionTypes>） */
