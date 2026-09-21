@@ -2,11 +2,23 @@
 
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { focusPull } from "@/lib/motion/focus";
 import { withThemeViewTransition } from "@/lib/motion/vt";
 import { useThemeStore } from "@/stores/theme-store";
 import { useUIShellStore } from "@/stores/ui-shell-store";
 import { themeList } from "@/themes/registry";
+
+/**
+ * T3 拉焦载体 = cmdk 的遮罩层（视口级、堆叠在面板之下）。
+ * 先试从 Dialog 内容节点回溯（[cmdk-dialog] 的前一个兄弟就是 [cmdk-overlay]），
+ * 未挂载时退回 cmdk 的属性契约全局查。两者都是 cmdk 自己写上的稳定属性。
+ */
+function focusPullHost(root: HTMLElement | null): HTMLElement | null {
+  const sibling = root?.closest("[cmdk-dialog]")?.previousElementSibling;
+  if (sibling instanceof HTMLElement) return sibling;
+  return document.querySelector<HTMLElement>("[cmdk-overlay]");
+}
 
 export function CommandMenu({
   lang,
@@ -27,9 +39,38 @@ export function CommandMenu({
   const open = useUIShellStore((s) => s.commandOpen);
   const setOpen = useUIShellStore((s) => s.setCommandOpen);
   const setTheme = useThemeStore((s) => s.setTheme);
+  const motion = useThemeStore((s) => s.resolved.motion);
   const router = useRouter();
 
   const [ready, setReady] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // T3 镜头拉焦（spec §4：⌘K 是全站最贵的交互瞬间）：打开即失焦→扫描→锁焦。
+  // 载体取 cmdk 遮罩层而非面板本体：遮罩是视口级且 DOM 序在面板之前，
+  // 所以 blur 能糊到整屏、扫描线压在内容之上面板之下，面板自己保持锐利。
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    let stop = () => {};
+    let raf = 0;
+    let frames = 0;
+    const pull = () => {
+      if (cancelled) return;
+      const scrim = focusPullHost(contentRef.current);
+      if (scrim) {
+        stop = focusPull(scrim, motion);
+        return;
+      }
+      // 帧数上限纯粹是防空转的保险（遮罩因任何原因没出现就放弃演出），不是计时源
+      if (++frames < 30) raf = requestAnimationFrame(pull);
+    };
+    pull();
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      stop();
+    };
+  }, [open, motion]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -59,6 +100,7 @@ export function CommandMenu({
     <>
       {ready ? <span data-command-ready hidden /> : null}
       <Command.Dialog
+        ref={contentRef}
         open={open}
         onOpenChange={setOpen}
         label={labels.placeholder}

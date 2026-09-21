@@ -147,6 +147,36 @@ h3 {
   }
 }
 
+/* ── T3 镜头拉焦（spec §2.2 / §4 ⌘K：整屏失焦 → 扫描线 → 锁焦 ≤350ms）──
+   载体是遮罩层（[data-focus-pull] = cmdk overlay，fixed inset-0 z-50、DOM 序在面板之前）：
+   失焦走 backdrop-filter → 身后整屏糊掉而面板本体保持锐利；::after 因此天然压在
+   页面内容之上、⌘K 面板之下，无需 z-index 杂技（光标环 z-100 仍在最上）。
+   --fp-blur / --fp-y 由 src/lib/motion/focus.ts 的 GSAP 时间线逐帧写入（时长/easing 取
+   theme.motion token）；故意不注册 @property：注册成 inherits:false 会断掉向 ::after 的继承。 */
+[data-focus-pull] {
+  backdrop-filter: blur(var(--fp-blur, 0px));
+}
+[data-focus-pull]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* 一条横向光带自顶掠过：band 高 26%，靠 background-position 百分比在盒内上下扫，
+     不溢出、不需 overflow:hidden。
+     取 --ink 而非 --accent：当前 --accent 生成为 oklch(from … calc(h + var(--hue-rotate)))，
+     而 --hue-rotate 注册成 <angle> 后代入 0deg，number+angle 的 calc 非法 → accent 整条链
+     在 Chromium 下 IACVT（属另一处待修缺陷，见 Task 5 交付报告），派生色一律拿不到值。 */
+  background-image: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in oklab, var(--ink) 45%, transparent),
+    transparent
+  );
+  background-size: 100% 26%;
+  background-repeat: no-repeat;
+  background-position: 0 var(--fp-y, 0%);
+}
+
 /* 方向性导航（<Link transitionTypes>） */
 ::view-transition-old(.nav-forward) {
   animation: vt-out-left 320ms ease-in-out both;
