@@ -32,12 +32,16 @@ export function createRiftState(effects: {
     shift: 0,
     time: 0,
   };
-  const K = effects.intensity;
+  let K = effects.intensity;
   return {
     u,
-    /** 底噪总强度旋钮（0–1）：乘进 breath（呼吸+手电共用载波） */
+    /** 底噪呼吸直拨（绝对值）：挂载后热更新路径传 resolved effects.hum.breath，不再乘创建时快照 */
     setHum(v: number) {
-      u.breath = v * effects.breath;
+      u.breath = v;
+    },
+    /** 烈度热更（riftIntensity 滑杆）：后续 tear/collapse/shift 按新 K 缩放，无需重挂层 */
+    setIntensity(k: number) {
+      K = k;
     },
     /** T1 撕合进度 0→1，按人格烈度缩放 */
     setTear(p: number) {
@@ -59,7 +63,7 @@ export type RiftState = ReturnType<typeof createRiftState>;
 const VERT = `attribute vec2 position; void main(){ gl_Position = vec4(position, 0.0, 1.0); }`;
 
 const FRAG = `precision mediump float;
-uniform vec2 uRes; uniform vec2 uMouse;
+uniform vec2 uRes; uniform vec2 uMouse; uniform float uDpr;
 uniform float uBreath, uTear, uCollapse, uShift, uTime;
 float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
 void main(){
@@ -75,8 +79,8 @@ void main(){
   vec3 col = vec3(0.027, 0.027, 0.039) + breath + light;
   col += seam * vec3(0.81, 0.89, 1.0) * (0.5 + 0.5*h(uv*100.0+uTime));
   col.r += seam * uShift * 0.35; col.b -= seam * uShift * 0.35;
-  // 崩解：64px 块状噪声在 uCollapse 前后吞噬画面
-  vec2 blk = floor(uv * (uRes / 64.0));
+  // 崩解：64 CSS px 块状噪声在 uCollapse 前后吞噬画面（uRes 是物理像素，除 uDpr 换算回 CSS 口径）
+  vec2 blk = floor(uv * (uRes / (64.0 * uDpr)));
   float thr = h(blk) * 0.4 + uCollapse;
   if (thr > 1.0 && uCollapse > 0.0 && uCollapse < 1.0) col = mix(col, vec3(0.0), step(1.0, thr));
   gl_FragColor = vec4(col * (1.0 - uCollapse * 0.9), 1.0);
@@ -105,6 +109,7 @@ export function mountRift(
     uniforms: {
       uRes: { value: state.u.res },
       uMouse: { value: state.u.mouse },
+      uDpr: { value: renderer.dpr }, // 一次性：创建后 dpr 变化不重编译（窗口跨屏拖拽属边缘场景）
       uBreath: { value: state.u.breath },
       uTear: { value: state.u.tear },
       uCollapse: { value: state.u.collapse },

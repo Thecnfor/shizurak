@@ -17,6 +17,7 @@ export function RiftLayer() {
   const tier = useFxTier();
   const reduced = usePrefersReducedMotion();
   const [idle, setIdle] = useState(false);
+  const stateRef = useRef<RiftState | null>(null);
 
   // 首屏让路：idle 后才动态加载 rift chunk（spec §3 预算：LCP 零占用）；无 rIC 的环境回退定时器
   useEffect(() => {
@@ -46,31 +47,38 @@ export function RiftLayer() {
     import("@/lib/gl/rift").then(({ createRiftState, mountRift }) => {
       if (!alive) return;
       try {
+        // 挂载时刻从 store 取最新 hum/rift：不闭包依赖这两个值，滑杆变化走下方热更新
+        const live = useThemeStore.getState().resolved.effects;
         state = createRiftState({
-          breath: effects.hum.breath,
-          intensity: effects.rift.intensity,
+          breath: live.hum.breath,
+          intensity: live.rift.intensity,
         });
         layer = mountRift(canvas, state);
+        stateRef.current = state;
         // 转场层只认 state（含 setTear/setCollapse/setShift），不是 layer
         riftGlobalScope().__rift = state;
-      } catch {
-        // WebGL 上下文创建失败：维持静态幕面（canvas 不渲染内容）
+      } catch (e) {
+        // WebGL 上下文创建失败：维持静态幕面，降级留痕便于排查（不静默吞错）
+        console.warn("[rift] GL 不可用，降级静态幕布", e);
       }
     });
     return () => {
       alive = false;
       layer?.dispose();
+      if (stateRef.current === state) stateRef.current = null;
       const scope = riftGlobalScope();
       if (state && scope.__rift === state) delete scope.__rift;
     };
-  }, [
-    effects.renderer,
-    effects.hum.breath,
-    effects.rift.intensity,
-    tier,
-    reduced,
-    idle,
-  ]);
+    // deps 只留“换层”级变量：hum/rift 滑杆逐帧变化走下方热更新 effect，不重挂/不重编译 shader
+  }, [effects.renderer, tier, reduced, idle]);
+
+  // 参数热更新：层存活期间直接把新值刷进 uniform 状态，无重挂
+  useEffect(() => {
+    stateRef.current?.setHum(effects.hum.breath);
+  }, [effects.hum.breath]);
+  useEffect(() => {
+    stateRef.current?.setIntensity(effects.rift.intensity);
+  }, [effects.rift.intensity]);
 
   if (reduced || effects.renderer === "none") return null;
 
