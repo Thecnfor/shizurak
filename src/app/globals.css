@@ -173,20 +173,24 @@ h3 {
 /* ── T1 定格撕幕（spec §2.2 主语法）：对角硬边撕裂——旧幕半幅坠出（位移+微旋），
    新幕合拢；300ms 封顶（§7 预算）。rift-tear 类与 window.__rift 的 setTear/setShift
    由 RiftDirector 包装 document.startViewTransition 在这一段同窗驱动（缝光同步）。
-   单语法门控（铁律 3：一次转场只用 T1/T2/T3 之一）：T1 只归路由。换肤 morph 由
-   withThemeViewTransition 在 startViewTransition **之前**同步挂 html.theme-morph，
-   这里用 :not() 负向门控把它让回 UA 默认交叉淡入——类必须在建伪元素树之前就位，
-   故不能用「ready 之后挂 rift-tear」做正向门控（那时 animation-name 已来不及生效）。 */
-html:not(.theme-morph)::view-transition-old(root),
-html:not(.theme-morph)::view-transition-new(root) {
+   门控架构：正向语法类。RiftDirector 在 native startViewTransition **调用之前**同步
+   挂 html.rift-t1（root 伪元素树建立时就查 animation-name，晚挂来不及），
+   finished 即摘。于是：
+   · 路由过渡且 rift 烈度 > 0 且非 reduced → rift-t1 → 本块撕幕；
+   · 换肤 morph（回调形态）/ intensity===0 人格（lumen、paper）/ reduced → 不挂类
+     → 本块不参与 → UA 默认交叉淡入。旧 html:not(.theme-morph) 负向门控随此退役。
+   单语法铁律（spec §2.2 铁律 3：一次转场只用 T1/T2/T3 之一）：root 伪元素的 animation-name
+   只由已挂上的语法类供给，不挂类则无自定义动画。 */
+html.rift-t1::view-transition-old(root),
+html.rift-t1::view-transition-new(root) {
   animation-duration: 300ms;
   animation-timing-function: var(--ease-rift);
   mix-blend-mode: normal;
 }
-html:not(.theme-morph)::view-transition-old(root) {
+html.rift-t1::view-transition-old(root) {
   animation-name: rift-old;
 }
-html:not(.theme-morph)::view-transition-new(root) {
+html.rift-t1::view-transition-new(root) {
   animation-name: rift-new;
 }
 @keyframes rift-old {

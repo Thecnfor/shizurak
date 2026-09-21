@@ -1,4 +1,9 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import {
+  sampleVtWindow,
+  watchClassAppear,
+  watchClassLifecycle,
+} from "./probes";
 
 test("根路径按语言协商重定向", async ({ page }) => {
   // Playwright 默认 Accept-Language 为 en-US → 期望 /en
@@ -19,107 +24,80 @@ test("不支持的语言 404", async ({ page }) => {
 });
 
 /**
- * T1 撕幕标记只活 ≤300ms（+调度余量），事后断言必然竞态。
- * 故点击**前**装 MutationObserver 探针：出现记 t0，并现场取两样硬证据——
- * a) root 伪元素的动画名（证明确实在跑 rift-old 而非默认 crossfade）；
- * b) 正在飞着的 ::view-transition-* 动画的声明时长（§7 的 300ms 红线真正归它管，
- *    墙钟受机器负载污染，声明时长不受）；类消失时回报存活时长作带负载余量的上限。
- * 诚实探针模式同 command.spec 的 T3 探针。
+ * T1 撕幕标记只活 ≤300ms（+调度余量），事后断言必然竞态——探针库
+ * watchClassLifecycle 在点击**前**装 MutationObserver：出现记 t0 并现场取两样硬证据
+ * （root 伪元素动画名 + 在飞动画的声明时长），类消失时回报存活时长。
+ * 实现与预算口径见 tests/e2e/probes.ts。
  */
-function watchRiftTear(page: Page) {
-  return page.evaluate(
-    () =>
-      new Promise<{
-        seen: boolean;
-        heldMs: number | null;
-        oldAnim: string | null;
-        declaredMs: number | null;
-      }>((resolve) => {
-        const has = () =>
-          document.documentElement.classList.contains("rift-tear");
-        let t0 = 0;
-        let oldAnim: string | null = null;
-        let declaredMs: number | null = null;
-        const mo = new MutationObserver(() => {
-          if (!t0) {
-            if (!has()) return;
-            t0 = performance.now();
-            oldAnim = getComputedStyle(
-              document.documentElement,
-              "::view-transition-old(root)",
-            ).animationName;
-            // React 自己也是这样枚举伪元素动画的（见 react-dom 的 startViewTransition）
-            const vt = document.documentElement
-              .getAnimations({ subtree: true })
-              .filter((a) => {
-                const pseudo = (a.effect as KeyframeEffect | null)
-                  ?.pseudoElement;
-                return (
-                  typeof pseudo === "string" &&
-                  pseudo.startsWith("::view-transition")
-                );
-              });
-            declaredMs = vt.length
-              ? Math.max(
-                  ...vt.map(
-                    (a) =>
-                      Number(
-                        (a.effect as KeyframeEffect).getTiming().duration,
-                      ) || 0,
-                  ),
-                )
-              : null;
-            return;
-          }
-          if (!has()) {
-            mo.disconnect();
-            resolve({
-              seen: true,
-              heldMs: performance.now() - t0,
-              oldAnim,
-              declaredMs,
-            });
-          }
-        });
-        mo.observe(document.documentElement, {
-          attributes: true,
-          attributeFilter: ["class"],
-        });
-        if (has()) t0 = performance.now();
-        window.setTimeout(() => {
-          mo.disconnect();
-          resolve({ seen: t0 > 0, heldMs: null, oldAnim, declaredMs });
-        }, 2000);
-      }),
-  );
-}
-
 test("T1 撕幕：路由切换出现 html.rift-tear 且在预算内消失", async ({
   page,
 }) => {
   await page.goto("/zh");
   // 导演随水合安装（包装 document.startViewTransition）；导航必须走客户端路由才会有 VT
   await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
-  const probe = watchRiftTear(page); // 不 await：探针常驻页面 2s，与点击并发
-  // 目标选 /zh/projects：计划文本写 posts，但 dev 下该 ISR 路由冷编译实测要 5s（+DB 往返），
-  // 会越过探针的 2s 窗口把断言耦在编译/基础设施延时上；posts 的路由可达性由 shell.spec 守
+  // 正向语法类 rift-t1 与 shader 锚点 rift-tear 同窗跟踪（rift-t1 在 native 调用前就挂，
+  // 比 rift-tear 早 ready 那几十毫秒；两者都必须在预算内摘除）
+  const grammar = watchClassAppear(page, "rift-t1");
+  // 出现窗口放宽到 8s（dev 提交可被冷编译/并行 worker 拖住），
+  // 预算门禁仍只看摘除是否宽限内（graceMs）与声明时长
+  const probe = watchClassLifecycle(page, "rift-tear", {
+    timeoutMs: 8000,
+    graceMs: 1500,
+  }); // 不 await：探针与点击并发
+  // 目标选 /zh/projects：计划文本写 posts，但 dev 下该 ISR 路由冷编译要 5s（+DB 往返），
+  // 会把断言耦在编译/基础设施延时上；posts 的路由可达性由 shell.spec 守
   await page
     .getByRole("link", { name: /项目|Projects/ })
     .first()
     .click();
   await expect(page).toHaveURL(/\/zh\/projects$/);
   const { seen, heldMs, oldAnim, declaredMs } = await probe;
+  expect(await grammar).toBe(true);
   expect(seen).toBe(true);
   // root 快照确实在跑 T1 语法（不是浏览器默认 crossfade，也不是被剖出 root）
   expect(oldAnim).toBe("rift-old");
   // §7 红线：撕幕动画声明时长必须就是 300ms（负载无关的真门禁）
   expect(declaredMs).toBe(300);
   if (heldMs === null) {
-    throw new Error("探针没拿到存活时长：rift-tear 未出现或未在 2s 内摘除");
+    throw new Error("探针没拿到存活时长：rift-tear 未在宽限（1.5s）内摘除");
   }
   // 墙钟上限：标记从 ready（动画起跑）挂上、finished 摘，中间夹着 promise 回调排队；
   // 6 worker 并行下实测可飘到 ~470ms，故与 T3（350ms 预算→600ms 上限）同口径
   expect(heldMs).toBeLessThan(600);
+});
+
+/**
+ * 正向门控的反例（I-2）：rift 烈度为 0 的人格不得拿到任何语法。
+ * lumen 的 effects.rift.intensity === 0（契约见 src/themes/lumen），RiftDirector
+ * 在 native startViewTransition 前同步判定 → 不挂 rift-t1 → root 伪元素保
+ * UA 默认交叉淡入（spec §6.1「lumen：T1/T2 关闭」）。旧 :not(.theme-morph)
+ * 负向门控时代这条不成立（无论烈度都跑 rift-old + tear 时间线）。
+ * 用 ?theme=lumen 驱动（URL 分享码优先于 localStorage，见 theme-provider）。
+ */
+test("lumen（intensity=0）路由导航不吃语法：无 rift-t1 类、无 rift-old 动画", async ({
+  page,
+}) => {
+  await page.goto("/zh?theme=lumen");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "lumen");
+  await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+  const grammar = watchClassLifecycle(page, "rift-t1", {
+    timeoutMs: 8000,
+    graceMs: 1500,
+  });
+  const sampled = sampleVtWindow(page, ["rift-t1", "rift-tear", "rift-t2"], {
+    durationMs: 6000,
+  });
+  await page
+    .getByRole("link", { name: /项目|Projects/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/zh\/projects$/);
+  expect((await grammar).seen).toBe(false);
+  const sample = await sampled;
+  expect(sample.classesSeen).toEqual([]);
+  expect(sample.oldAnims).not.toContain("rift-old");
+  // 但过渡本身仍在跑（否则「不含 rift-old」可以靠根本没 VT 蒙对）
+  expect(sample.oldAnims.join(" ")).toContain("view-transition-fade-out");
 });
 
 test.describe("reduced-motion", () => {
@@ -127,27 +105,20 @@ test.describe("reduced-motion", () => {
   test("T1 硬切：导航不出现 rift-tear 标记", async ({ page }) => {
     await page.goto("/zh");
     await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
-    const probe = watchRiftTear(page);
-    // 同时轮询旧幕伪元素的动画名：reduced 下 CSS 的 animation:none !important 必须压住 rift-old
-    const sampled = page.evaluate(async () => {
-      const names = new Set<string>();
-      for (let i = 0; i < 40; i += 1) {
-        names.add(
-          getComputedStyle(
-            document.documentElement,
-            "::view-transition-old(root)",
-          ).animationName,
-        );
-        await new Promise((r) => setTimeout(r, 20));
-      }
-      return [...names];
+    const grammar = watchClassAppear(page, "rift-t1");
+    const probe = watchClassLifecycle(page, "rift-tear", { timeoutMs: 6000 });
+    // 同时逐帧采样伪元素动画名：reduced 下语法闸第一步就拦掉（不挂类），
+    // CSS 的 animation:none !important 再压一层
+    const sampled = sampleVtWindow(page, ["rift-t1", "rift-tear"], {
+      durationMs: 3000,
     });
     await page
       .getByRole("link", { name: /项目|Projects/ })
       .first()
       .click();
     await expect(page).toHaveURL(/\/zh\/projects$/);
+    expect(await grammar).toBe(false);
     expect((await probe).seen).toBe(false);
-    expect(await sampled).not.toContain("rift-old");
+    expect((await sampled).oldAnims).not.toContain("rift-old");
   });
 });

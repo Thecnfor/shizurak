@@ -2,7 +2,6 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ViewTransition } from "react";
 import { RouteTransition } from "@/components/fx/route-transition";
 import { getDb } from "@/lib/db/client";
 import { getPostBySlug } from "@/lib/db/queries/posts";
@@ -66,11 +65,11 @@ export default async function PostPage({
       <main className="mx-auto max-w-[var(--container-max)] px-6 py-24">
         <div className="mx-auto max-w-3xl">
           <div className="scroll-progress" aria-hidden />
-          <ViewTransition name={`post-${post.slug}`} default="none">
-            <h1 className="text-[length:var(--text-h1-size)] font-semibold leading-[var(--text-h1-lh)] tracking-[var(--text-h1-tracking)]">
-              {post.title}
-            </h1>
-          </ViewTransition>
+          {/* 无具名 <ViewTransition>：共享元素转换会把标题从 root 快照里剥出去，
+              破坏 T1 整幕撕合（单语法铁律）——列表侧已同理由拆除，此处同步 */}
+          <h1 className="text-[length:var(--text-h1-size)] font-semibold leading-[var(--text-h1-lh)] tracking-[var(--text-h1-tracking)]">
+            {post.title}
+          </h1>
           <div className="mt-4 flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-widest text-ink-muted tabular-nums">
             <span>{published}</span>
             <span>· {post.readingTime ?? 1} min</span>

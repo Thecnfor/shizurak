@@ -25,7 +25,8 @@ export default async function PostsPage({
             <li key={p.slug} className="cv-auto">
               <Link href={`/${lang}/posts/${p.slug}`}>
                 {/* 旧 per-row <ViewTransition name> 移除：会把行从 root 快照里剖出去，
-                    破坏 T1 整幕撕合（单语法铁律）；且详情页无同名配对，从未真共享元素 */}
+                    破坏 T1 整幕撕合（单语法铁律）；详情页那侧的同名配对也已同步拆除
+                    （见 [slug]/page.tsx），两侧均只走 root 语法，不再残留具名 VT */}
                 <article className="rounded-md border border-border bg-surface p-5 transition-colors hover:bg-surface-hover">
                   <h2 className="text-[length:var(--text-h3-size)] font-semibold text-ink">
                     {p.title}
