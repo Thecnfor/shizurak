@@ -1,6 +1,11 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { getDictionary } from "@/app/[lang]/dictionaries";
 import { ThemeSwitcher } from "@/components/site/theme-switcher";
+
+/* 底噪 tremor 错相（spec §2.1：随机相位禁同步）：服务端组件不能读 store，
+   延迟用静态内联样式；hum 关闭靠 <html>.hum-off 联动停颤（见 cursor-ring.tsx） */
+const TREMOR_DELAYS = ["0s", "0.6s", "1.2s", "1.8s"];
 
 export async function SiteNav({ lang }: { lang: string }) {
   const dict = await getDictionary();
@@ -22,12 +27,17 @@ export async function SiteNav({ lang }: { lang: string }) {
           SHIZURAK
         </Link>
         <div className="flex items-center gap-6">
-          {links.map((l) => (
+          {links.map((l, i) => (
             <Link
               key={l.href}
               href={l.href}
               transitionTypes={["nav-forward"]}
-              className="text-sm text-ink-muted hover:text-ink"
+              className="hum-tremor text-sm text-ink-muted hover:text-ink"
+              style={
+                {
+                  "--tremor-delay": TREMOR_DELAYS[i % TREMOR_DELAYS.length],
+                } as CSSProperties
+              }
             >
               {l.label}
             </Link>

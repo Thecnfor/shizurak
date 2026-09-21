@@ -42,10 +42,35 @@ test("低端分级：不加载 GL，canvas 走 CSS 呼吸兜底", async ({ page 
   await expect(page.locator('[data-fx="fallback"]')).toHaveCount(0);
 });
 
+test("底噪：幕环光标 pointer:fine 才出现", async ({ browser }) => {
+  const ctx = await browser.newContext({
+    screen: { width: 1440, height: 900 },
+  });
+  const page = await ctx.newPage();
+  await page.goto("/zh");
+  await page.mouse.move(400, 300);
+  await expect(page.locator("[data-cursor-ring]")).toBeVisible();
+});
+
+test("底噪：幕环光标触屏（pointer:coarse）隐藏", async ({ browser }) => {
+  const ctx = await browser.newContext({
+    hasTouch: true,
+    isMobile: true,
+    screen: { width: 390, height: 844 },
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await ctx.newPage();
+  await page.goto("/zh");
+  await page.mouse.move(200, 300);
+  await expect(page.locator("[data-cursor-ring]")).toBeHidden();
+});
+
 test.describe("reduced-motion", () => {
   test.use({ contextOptions: { reducedMotion: "reduce" } });
   test("强制静态化：不加载 canvas", async ({ page }) => {
     await page.goto("/zh?fxtier=high");
     await expect(page.locator("canvas[data-rift]")).toHaveCount(0);
+    // 底噪四项全关：幕环也不得挂载
+    await expect(page.locator("[data-cursor-ring]")).toHaveCount(0);
   });
 });

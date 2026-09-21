@@ -94,6 +94,59 @@ h3 {
   }
 }
 
+/* ── 底噪四项（spec §2.1 G3）：micro 微颤 + 幕环光标 ── */
+/* 幕人格 motion.easing.entrance 的 CSS 镜像：gen-theme-css 不产出 easing 变量，
+   改 void 主题曲线时需同步这里（仅幕环热态缩放用，非转场计时源） */
+:root {
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* 0.2Hz 偶发 1px 位移；错相靠 --tremor-delay，禁止同步抖动 */
+@keyframes hum-tremor {
+  0%,
+  96%,
+  100% {
+    transform: none;
+  }
+  97%,
+  99% {
+    transform: translate(0, 1px);
+  }
+}
+.hum-tremor {
+  animation: hum-tremor 5s steps(1) infinite;
+  animation-delay: var(--tremor-delay, 0s);
+}
+/* hum 关闭联动：tremor===0 或 reduced 时 HumGate 给 <html> 挂 .hum-off。
+   nav/footer 是服务端组件读不到 store， tremor 类常渲染，关闭只能走这条 CSS 联动 */
+.hum-off .hum-tremor {
+  animation: none;
+}
+/* 幕环光标：位置由 JS 写 translate 属性，CSS 只管 transform: scale（两通道不碰撞） */
+.cursor-ring {
+  position: fixed;
+  z-index: 100;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: difference;
+  transition:
+    transform 0.18s var(--ease-entrance),
+    border-color 0.18s var(--ease-entrance);
+}
+.cursor-ring[data-hot="true"] {
+  transform: scale(2.1);
+  border-color: var(--warning);
+}
+/* 触屏无光标：coarse 下强制隐藏（正例靠 pointer:fine，反例靠这条） */
+@media (pointer: coarse) {
+  .cursor-ring {
+    display: none;
+  }
+}
+
 /* 方向性导航（<Link transitionTypes>） */
 ::view-transition-old(.nav-forward) {
   animation: vt-out-left 320ms ease-in-out both;
@@ -255,6 +308,10 @@ h3 {
   }
   body {
     transition: none;
+  }
+  /* 底噪四项全关（SSR/未水合也成立；水合后由 HumGate 挂 .hum-off 双保险） */
+  .hum-tremor {
+    animation: none;
   }
   /* 一键静态化所有 ViewTransition（定位/缩放清零，保留必要 opacity） */
   ::view-transition-old(*),

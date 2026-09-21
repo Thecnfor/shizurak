@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { CommandMenu } from "@/components/command/command-menu";
+import { HumGate } from "@/components/fx/cursor-ring";
 import { FxLayer } from "@/components/fx/fx-layer";
 import { ClientKernelShell } from "@/components/providers/client-kernel-shell";
 import { AgentDock } from "@/components/site/agent-dock";
@@ -18,6 +19,8 @@ export default async function SiteLayout({
       <ClientKernelShell>
         <div className="flex min-h-dvh flex-col">
           <FxLayer />
+          {/* 底噪门控：tremor>0 且 !reduced 才挂幕环光标，off 时联动停住 tremor */}
+          <HumGate />
           <SiteNav lang={lang} />
           <div className="flex-1">{children}</div>
           <SiteFooter />
