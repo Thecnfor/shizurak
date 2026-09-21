@@ -172,6 +172,10 @@ export function installRiftTransitionDriver(
     if (held[grammar] <= 0) {
       held[grammar] = 0;
       document.documentElement.classList.remove(grammar);
+      // T2 时长 var 随类同计数归零：并发两条 T2 时，先结束的那条不许提前抽掉
+      // 后一条还在消费的门控变量（否则 CSS 退回默认 600ms，与在飞时间线错位）
+      if (grammar === "rift-t2")
+        document.documentElement.style.removeProperty("--rift-t2-duration");
     }
   };
 
@@ -251,8 +255,9 @@ export function installRiftTransitionDriver(
     void transition.ready.then(
       () => {
         started = true;
-        // 两段一条：0→峰占 45%（CSS 侧新幕从 45% 开始显现、旧幕至 55% 已完全
-        // 隐去，交叠窗口中点就是「碎屑吞屏」最盛处），峰→0 占余下 55%，
+        // 两段一条：0→峰占 45%（CSS 侧旧幕至 55% 完全隐去、新幕从 45% 起显现，
+        // 交叠窗口是 [45%,55%]：峰值正落在窗口起点 45%，即新幕开始现身、碎屑最盛处），
+        // 峰→0 占余下 55%，
         // 总时长与 CSS 动画同窗；onUpdate 挂在时间线上，每帧只回写一次 uniform
         flight = gsap
           .timeline({
@@ -312,9 +317,7 @@ export function installRiftTransitionDriver(
         if (settled) return;
         settled = true;
         window.clearTimeout(watchdog);
-        release(grammar);
-        if (grammar === "rift-t2")
-          root.style.removeProperty("--rift-t2-duration");
+        release(grammar); // T2 的 --rift-t2-duration 清理在 release 的归零分支里，与类同计数
       };
       watchdog = window.setTimeout(done, budget + 1500);
       void transition.finished.then(done, done);

@@ -9,7 +9,11 @@ const TREMOR_DELAYS = ["0s", "0.6s", "1.2s", "1.8s"];
 
 /** transitionTypes 直递 Next Link → React addTransitionType →
  *  startViewTransition({ update, types })，由 RiftDirector 按点名派发幕语法
- *  （spec §2.2：任意页→Lab 是 T2 信号崩解的合法触发点之一） */
+ *  （spec §2.2：任意页→Lab 是 T2 信号崩解的合法触发点之一）。
+ *  ⚠️ 预取竞态（实测，collapse.spec 靠等 prefetch 落地规避）：transitionTypes 只在
+ *  目标路由的 prefetch 响应**已落地**后存活；预取还在飞时点击，Next 复用未完成请求
+ *  走 ping 提交，React 不带 types → Lab 链接退化成 T1 撕幕。修法候选（跟进项记在计划文档「执行期补记」）：点击路径上主动 await router.prefetch 再 push，
+ *  或等 Next 修掉复用路径丢 types 的行为。 */
 type NavLink = { href: string; label: string; transitionTypes?: string[] };
 
 export async function SiteNav({ lang }: { lang: string }) {

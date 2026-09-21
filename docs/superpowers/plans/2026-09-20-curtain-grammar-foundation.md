@@ -585,3 +585,11 @@ export function collapseViewTransition(mutate: () => void, motion: ThemeMotion) 
 - **Plan B 范围补充**：文章页留白构图 + 针脚阅读进度线（spec §4 文章页部分）——目标页由 M1 新代码拥有，执行前先盘点 `src/app/[lang]/(site)/posts/` 现状再出精确任务
 - **lumen 针脚化取值待定**：spec §6.1 要求 lumen accent 同样退为针脚角色但未给具体值，Task 2 仅改 void；lumen 新值由用户定稿后小 PR 落地
 - 真内容接入 M1 后替换 Task 8 Step 2 的假数据挂点
+
+## 执行期补记
+
+> Task 1–7 落地过程中发现的与计划文本不符的事实，后续读计划的人（和 Task 8+ 的执行者）以本节为准：
+
+- **transitionTypes 预取竞态**（Task 7 实测）：Link 的 `transitionTypes` 只在目标路由 prefetch 响应已落地后存活；预取还在飞时点击，Next 复用未完成请求走 ping 提交，React 不带 types → 本应 T2 的导航退化成 T1。e2e（collapse.spec）靠点击前显式等 `?_rsc` 响应 + 400ms 缓存落地窗口规避；产品侧跟进项：点击路径主动 await prefetch 再 push，或等上游修复用路径丢 types 的行为（代码注释见 nav.tsx）。
+- **DB 取数必须收进 <Suspense>，否则导航起双 VT / 根本不起 VT**（Task 7 实测）：页面级 `await` 数据库会把整条路由 RSC 响应押在 DB 往返后（本机 DB 不可达时 ≈11.6s），React 为这次导航根本不起 view transition，幕语法拿不到类；即便 DB 慢而可达，Suspense 解挂补提交会再起一次 VT（双转场）。模式定案：DB 段落包 `<Suspense fallback=诚实骨架>` + 子组件内 try/catch 降空态（见 lab/page.tsx，首页精选信号沿用），E2E 一律断言「骨架或内容二选一」不断具体行。
+- **shell.spec 的 DB 基础设施依赖**（Task 7 评审指出）：nav→posts 用例的 h1 内容断言把测试耦在 DB 可达性上（posts 页当时页级 await 取数，DB 挂则 500）。Task 8 把 posts 取数收进 Suspense+try/catch 后，导航断言放宽为 href/URL 校验，内容断言只赌静态骨架；此条随 Task 8 的 e2e 改造一同落地。
