@@ -2,20 +2,13 @@ import type { Theme, ThemeMode } from "@/themes/contract";
 
 const kebab = (s: string) => s.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
 
-/** accent 系色值包一层 OKLCH 色相旋转（个性化 accentHue 的运行时钩子） */
-function colorValue(key: string, value: string): string {
-  if (key === "accent" || key === "accentHover") {
-    return `oklch(from ${value} l c calc(h + var(--hue-rotate, 0)))`;
-  }
-  return value;
-}
-
 function tokensToDecls(theme: Theme, mode: ThemeMode): string {
   const t = theme.tokens[mode];
   if (!t) throw new Error(`${theme.meta.id}:${mode} 缺少令牌`);
   const decls: string[] = [];
   for (const [key, value] of Object.entries(t.color)) {
-    decls.push(`  --${kebab(key)}: ${colorValue(key, value)};`);
+    // 契约 v2 废除访客色相个性化：色值直出，不再包 oklch(from …) hue-rotate 钩子
+    decls.push(`  --${kebab(key)}: ${value};`);
   }
   for (const [key, value] of Object.entries(t.shape))
     decls.push(`  --${kebab(key)}: ${value};`);
@@ -42,7 +35,6 @@ function tokensToDecls(theme: Theme, mode: ThemeMode): string {
 export function themeVarsCss(themes: Theme[]): string {
   const blocks: string[] = [
     "/* 自动生成：scripts/gen-theme-css.ts —— 请勿手改 */",
-    ":root {\n  --hue-rotate: 0;\n}",
   ];
   for (const theme of themes) {
     for (const mode of theme.meta.modes) {

@@ -25,7 +25,7 @@ function DomSync() {
   const resolved = useThemeStore((s) => s.resolved);
   const { resolvedTheme, setTheme: setNextTheme } = useTheme();
 
-  // store → DOM 属性 + GSAP 默认值（v2 废除 accentHue，--hue-rotate 保持生成值）
+  // store → DOM 属性 + GSAP 默认值（v2 废除 accentHue，色相钩子已从生成管线整体删除）
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-theme", resolved.meta.id);

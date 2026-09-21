@@ -40,6 +40,18 @@ test("幕人格 tokens", async ({ page }) => {
   const accent = await root.evaluate((el) =>
     getComputedStyle(el).getPropertyValue("--accent").trim(),
   );
-  // CSS 管线把 accent 包成 oklch(from <hex> l c calc(h + ...))，断言内嵌的幕人格冰蓝白 hex
-  expect(accent).toContain("#cfe4ff");
+  // hue-rotate 钩子删除后直出令牌色值（旧版包 oklch(from …) 导致整链 IACVT）
+  expect(normHex(accent)).toBe("#cfe4ff");
+});
+
+test("回归门禁：.text-accent 实际渲染针脚冰蓝（不再落入 inherit）", async ({
+  page,
+}) => {
+  await page.goto("/zh");
+  // 旧缺陷：--accent 生成值 number+angle calc 非法 → 所有 accent 消费点 IACVT 继承父色；
+  // 这里断言真实颜色计算结果，而非变量字面串
+  await expect(page.locator(".text-accent").first()).toHaveCSS(
+    "color",
+    "rgb(207, 228, 255)",
+  );
 });

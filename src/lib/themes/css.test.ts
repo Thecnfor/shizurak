@@ -21,9 +21,14 @@ describe("themeVarsCss", () => {
     expect(css).toContain("--radius-sm: 0px");
     expect(css).toContain("--text-h1-size:");
   });
-  it("accent 走 oklch 色相旋转钩子", () => {
-    expect(css).toContain(
-      "oklch(from #cfe4ff l c calc(h + var(--hue-rotate, 0)))",
-    );
+  it("accent 直出令牌色值（hue-rotate 钩子已删除）", () => {
+    expect(css).toContain("--accent: #cfe4ff;");
+    expect(css).toContain("--accent-hover: #e6f1ff;");
+  });
+  it("回归门禁：生成 CSS 不含 oklch(from 相对色值与 hue-rotate 残留", () => {
+    // 旧钩子 oklch(from … calc(h + var(--hue-rotate))) 与 <angle> 注册碰撞，
+    // 使全部主题 accent 整链 IACVT（见 2026-09-21 修复）；不得回潮
+    expect(css).not.toContain("oklch(from");
+    expect(css).not.toContain("hue-rotate");
   });
 });

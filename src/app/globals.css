@@ -27,13 +27,6 @@
   --radius-lg: var(--radius-lg);
 }
 
-/* 个性化色相旋转：注册为 <angle> → 色相变化本身可 transition 动画（设计规范 §1.5） */
-@property --hue-rotate {
-  syntax: "<angle>";
-  inherits: true;
-  initial-value: 0deg;
-}
-
 html {
   color-scheme: dark light;
   scroll-behavior: smooth;
@@ -41,7 +34,6 @@ html {
 
 /* 浮层派生令牌（设计规范 §11）：跨主题一致的阴影/焦点环 */
 :root {
-  --hue-rotate: 0deg;
   --overlay-shadow: var(--shadow-md);
   --focus-ring-color: var(--accent);
 }
@@ -162,14 +154,12 @@ h3 {
   inset: 0;
   pointer-events: none;
   /* 一条横向光带自顶掠过：band 高 26%，靠 background-position 百分比在盒内上下扫，
-     不溢出、不需 overflow:hidden。
-     取 --ink 而非 --accent：当前 --accent 生成为 oklch(from … calc(h + var(--hue-rotate)))，
-     而 --hue-rotate 注册成 <angle> 后代入 0deg，number+angle 的 calc 非法 → accent 整条链
-     在 Chromium 下 IACVT（属另一处待修缺陷，见 Task 5 交付报告），派生色一律拿不到值。 */
+     不溢出、不需 overflow:hidden。针脚冰蓝直接消费 --accent（旧版此处因 hue-rotate
+     钩子把 accent 整链打成 IACVT 才临时取 --ink，钩子删除后已恢复可用）。 */
   background-image: linear-gradient(
     180deg,
     transparent,
-    color-mix(in oklab, var(--ink) 45%, transparent),
+    color-mix(in oklab, var(--accent) 45%, transparent),
     transparent
   );
   background-size: 100% 26%;
