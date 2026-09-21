@@ -28,7 +28,6 @@ export default async function LabPage({ params }: PageProps<"/[lang]/lab">) {
                 <li key={s.id}>
                   <Link
                     href={`/${lang}/lab/s/${s.id}`}
-                    transitionTypes={["nav-forward"]}
                     className="block rounded-md border border-border bg-surface p-4 hover:bg-surface-hover"
                   >
                     <span className="font-mono text-xs uppercase tracking-widest text-accent">

@@ -86,6 +86,11 @@ export function CommandMenu({
     return () => document.removeEventListener("keydown", onKey);
   }, [setOpen]);
 
+  /**
+   * 不在此处再包一层 document.startViewTransition：Next 的 router.push 已把这次
+   * 导航提交包进 React 的路由 VT（实测 ⌘K 跳转记到 1 次 startViewTransition({update,types})），
+   * 重复包裹只会嵌套两条过渡。T1 撕幕由 RiftDirector 在 startViewTransition 挂点上统一导演。
+   */
   const go = (href: string) => {
     setOpen(false);
     router.push(href);

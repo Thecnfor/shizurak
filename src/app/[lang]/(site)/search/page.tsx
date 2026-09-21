@@ -28,7 +28,6 @@ async function Results({
         <li key={p.slug}>
           <Link
             href={`/${lang}/posts/${p.slug}`}
-            transitionTypes={["nav-forward"]}
             className="block rounded-md border border-border bg-surface p-4 hover:bg-surface-hover"
           >
             <h2 className="text-[length:var(--text-h3-size)] font-semibold text-ink">

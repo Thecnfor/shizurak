@@ -114,7 +114,6 @@ export default async function PostPage({
           <div className="mt-12 border-t border-border pt-6">
             <Link
               href={`/${lang}/posts`}
-              transitionTypes={["nav-back"]}
               className="font-mono text-xs uppercase tracking-widest text-accent"
             >
               ← {dict.nav.posts}

@@ -91,6 +91,9 @@ h3 {
    改 void 主题曲线时需同步这里（仅幕环热态缩放用，非转场计时源） */
 :root {
   --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  /* 幕人格 motion.easing.rift 的 CSS 镜像（同 --ease-entrance 的同步义务）：
+     改 void 主题 easing.rift 时需同步这里；T1 撕幕曲线（进场急收） */
+  --ease-rift: cubic-bezier(0.85, 0, 0.15, 1);
 }
 /* 0.2Hz 偶发 1px 位移；错相靠 --tremor-delay，禁止同步抖动 */
 @keyframes hum-tremor {
@@ -167,41 +170,40 @@ h3 {
   background-position: 0 var(--fp-y, 0%);
 }
 
-/* 方向性导航（<Link transitionTypes>） */
-::view-transition-old(.nav-forward) {
-  animation: vt-out-left 320ms ease-in-out both;
+/* ── T1 定格撕幕（spec §2.2 主语法）：对角硬边撕裂——旧幕半幅坠出（位移+微旋），
+   新幕合拢；300ms 封顶（§7 预算）。rift-tear 类与 window.__rift 的 setTear/setShift
+   由 RiftDirector 包装 document.startViewTransition 在这一段同窗驱动（缝光同步）。
+   单语法门控（铁律 3：一次转场只用 T1/T2/T3 之一）：T1 只归路由。换肤 morph 由
+   withThemeViewTransition 在 startViewTransition **之前**同步挂 html.theme-morph，
+   这里用 :not() 负向门控把它让回 UA 默认交叉淡入——类必须在建伪元素树之前就位，
+   故不能用「ready 之后挂 rift-tear」做正向门控（那时 animation-name 已来不及生效）。 */
+html:not(.theme-morph)::view-transition-old(root),
+html:not(.theme-morph)::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: var(--ease-rift);
+  mix-blend-mode: normal;
 }
-::view-transition-new(.nav-forward) {
-  animation: vt-in-right 320ms ease-in-out both;
+html:not(.theme-morph)::view-transition-old(root) {
+  animation-name: rift-old;
 }
-::view-transition-old(.nav-back) {
-  animation: vt-out-right 320ms ease-in-out both;
+html:not(.theme-morph)::view-transition-new(root) {
+  animation-name: rift-new;
 }
-::view-transition-new(.nav-back) {
-  animation: vt-in-left 320ms ease-in-out both;
-}
-@keyframes vt-out-left {
+@keyframes rift-old {
   to {
-    opacity: 0;
-    translate: -48px 0;
+    clip-path: polygon(110% 0, 110% 0, 110% 110%, 110% 110%);
+    transform: translate(6%, -3%) rotate(1.2deg);
+    filter: brightness(0.4);
   }
 }
-@keyframes vt-in-right {
+@keyframes rift-new {
   from {
-    opacity: 0;
-    translate: 48px 0;
+    clip-path: polygon(-10% 0, -10% 0, -10% 110%, -10% 110%);
+    transform: translate(-4%, 2%);
   }
-}
-@keyframes vt-out-right {
   to {
-    opacity: 0;
-    translate: 48px 0;
-  }
-}
-@keyframes vt-in-left {
-  from {
-    opacity: 0;
-    translate: -48px 0;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    transform: none;
   }
 }
 
@@ -337,7 +339,7 @@ h3 {
   ::view-transition-old(*),
   ::view-transition-new(*),
   ::view-transition-group(*) {
-    /* biome-ignore lint/complexity/noImportantStyles: reduced-motion 需以 !important 覆盖 .nav-* 具类动画（官方 View Transitions 配方） */
+    /* biome-ignore lint/complexity/noImportantStyles: reduced-motion 需以 !important 覆盖 root 具名动画（官方 View Transitions 配方） */
     animation: none !important;
   }
 }

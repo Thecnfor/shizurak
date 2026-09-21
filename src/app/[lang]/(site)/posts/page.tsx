@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ViewTransition } from "react";
 import { RouteTransition } from "@/components/fx/route-transition";
 import { listPublishedPosts } from "@/lib/db/queries/posts";
 import { getDictionary } from "../../dictionaries";
@@ -24,23 +23,20 @@ export default async function PostsPage({
         <ul className="mt-10 space-y-4">
           {items.map((p) => (
             <li key={p.slug} className="cv-auto">
-              <Link
-                href={`/${lang}/posts/${p.slug}`}
-                transitionTypes={["nav-forward"]}
-              >
-                <ViewTransition name={`post-${p.slug}`} default="none">
-                  <article className="rounded-md border border-border bg-surface p-5 transition-colors hover:bg-surface-hover">
-                    <h2 className="text-[length:var(--text-h3-size)] font-semibold text-ink">
-                      {p.title}
-                    </h2>
-                    {p.summary ? (
-                      <p className="mt-2 text-ink-muted">{p.summary}</p>
-                    ) : null}
-                    <p className="mt-3 font-mono text-xs uppercase tracking-widest text-ink-faint tabular-nums">
-                      {fmt(p.publishedAt)} · {p.readingTime ?? 1} min
-                    </p>
-                  </article>
-                </ViewTransition>
+              <Link href={`/${lang}/posts/${p.slug}`}>
+                {/* 旧 per-row <ViewTransition name> 移除：会把行从 root 快照里剖出去，
+                    破坏 T1 整幕撕合（单语法铁律）；且详情页无同名配对，从未真共享元素 */}
+                <article className="rounded-md border border-border bg-surface p-5 transition-colors hover:bg-surface-hover">
+                  <h2 className="text-[length:var(--text-h3-size)] font-semibold text-ink">
+                    {p.title}
+                  </h2>
+                  {p.summary ? (
+                    <p className="mt-2 text-ink-muted">{p.summary}</p>
+                  ) : null}
+                  <p className="mt-3 font-mono text-xs uppercase tracking-widest text-ink-faint tabular-nums">
+                    {fmt(p.publishedAt)} · {p.readingTime ?? 1} min
+                  </p>
+                </article>
               </Link>
             </li>
           ))}
