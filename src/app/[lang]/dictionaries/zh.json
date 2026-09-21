@@ -17,8 +17,31 @@
     "empty": "没有匹配结果",
     "hint": "输入关键词开始检索（模糊匹配，中英通用）"
   },
-  "footer": { "rights": "© 2026 伍泽凯 · shizurak" },
-  "home": { "heroKicker": "个人站点 · 建设中" },
+  "footer": {
+    "rights": "© 2026 WUZEKAI",
+    "commandHint": "⌘K 命令面板"
+  },
+  "home": {
+    "heroKicker": "个人站点 · 建设中",
+    "signals": "精选信号",
+    "directoryTitle": "项目名录",
+    "directory": [
+      "Rak 集群 — 基础设施 · 生产中",
+      "FlowMind — 工作流自动化 · 孵化中",
+      "XRAK — 开源工具 · 持续迭代",
+      "机器人 — 具身智能 · 预研"
+    ]
+  },
+  "posts": {
+    "headline": "先做出来，再写下来。",
+    "empty": "还没有发布的文章。"
+  },
+  "projects": {
+    "headline": "四个长期运行的东西。"
+  },
+  "about": {
+    "headline": "谁在敲这些字。"
+  },
   "theme": {
     "switcher": "主题",
     "mode": "明暗",

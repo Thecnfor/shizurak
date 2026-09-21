@@ -17,8 +17,31 @@
     "empty": "No matching results",
     "hint": "Type keywords to search (fuzzy, works for CJK & Latin)"
   },
-  "footer": { "rights": "© 2026 Zekai Wu · shizurak" },
-  "home": { "heroKicker": "Personal site · Under construction" },
+  "footer": {
+    "rights": "© 2026 WUZEKAI",
+    "commandHint": "⌘K commands"
+  },
+  "home": {
+    "heroKicker": "Personal site · Under construction",
+    "signals": "Signals",
+    "directoryTitle": "Directory",
+    "directory": [
+      "Rak cluster — infrastructure · in production",
+      "FlowMind — workflow automation · incubating",
+      "XRAK — open-source tooling · iterating",
+      "Robotics — embodied AI · research"
+    ]
+  },
+  "posts": {
+    "headline": "Built first, written down after.",
+    "empty": "Nothing published yet."
+  },
+  "projects": {
+    "headline": "Four things running long-term."
+  },
+  "about": {
+    "headline": "Who's typing this."
+  },
   "theme": {
     "switcher": "Theme",
     "mode": "Mode",

@@ -1,13 +1,13 @@
-"use client";
-
-import { useGSAP } from "@gsap/react";
-import { gsap } from "gsap";
-import { SplitText } from "gsap/SplitText";
-import { useRef } from "react";
-import { registerGsap } from "@/lib/motion/gsap";
-import { usePrefersReducedMotion } from "@/lib/motion/reduced";
-import { useThemeStore } from "@/stores/theme-store";
-
+/**
+ * 首页第一幕：一句话大标题 + kicker + tagline。
+ * 原 GSAP SplitText 逐字入场已整条删除（幕语法 spec §4 首页①/§6.3）：进站是
+ * 唯一一次「T1 自撕显现」——h1 元素级跑一次 hero-reveal（globals.css，几何与
+ * rift-new 同源，300ms = T1 预算，easing/时长走 CSS 令牌）。CSS 动画挂载即播
+ * 且只播一次，天然满足 once-per-full-page-load；零 JS、零 GSAP 依赖
+ * （gsap 本体仍在 focusPull / RiftDirector 等处注册使用，此处不再引用）。
+ * reduced-motion 的门控也在 CSS（文件尾 animation:none），组件保持纯展示——
+ * 于是 hero 从客户端组件降级为服务端组件。
+ */
 export function Hero({
   title,
   tagline,
@@ -17,67 +17,16 @@ export function Hero({
   tagline: string;
   kicker: string;
 }) {
-  const root = useRef<HTMLElement>(null);
-  const motion = useThemeStore((s) => s.resolved.motion);
-  const reduced = usePrefersReducedMotion();
-
-  useGSAP(
-    () => {
-      registerGsap();
-      const el = root.current;
-      if (!el) return;
-      if (reduced) {
-        el.dataset.anim = "done";
-        return;
-      }
-      const titleEl = el.querySelector("[data-hero-title]");
-      if (!titleEl) return;
-      const split = new SplitText(titleEl, { type: "chars,words" });
-      gsap
-        .timeline({
-          defaults: {
-            ease: motion.easing.entrance,
-            duration: motion.duration.section / 1000,
-          },
-          onComplete: () => {
-            el.dataset.anim = "done";
-            split.revert();
-          },
-        })
-        .from(split.chars, { autoAlpha: 0, y: 24, stagger: 0.02 })
-        .from(
-          el.querySelectorAll("[data-hero-fade]"),
-          {
-            autoAlpha: 0,
-            y: 12,
-            stagger: 0.08,
-            duration: motion.duration.ui / 1000,
-          },
-          "-=0.4",
-        );
-    },
-    { scope: root, dependencies: [motion, reduced] },
-  );
-
   return (
-    <section
-      ref={root}
-      data-anim="pending"
-      className="mx-auto flex min-h-[70vh] max-w-[var(--container-max)] flex-col justify-center px-6"
-    >
-      <p
-        data-hero-fade
-        className="font-mono text-xs uppercase tracking-[0.3em] text-accent"
-      >
-        {kicker}
-      </p>
+    <section className="mx-auto flex min-h-[70vh] max-w-[var(--container-max)] flex-col justify-center px-6">
+      <p className="mono-micro text-accent">{kicker}</p>
       <h1
         data-hero-title
-        className="mt-4 max-w-3xl text-[length:var(--text-display-size)] font-semibold leading-[var(--text-display-lh)] tracking-[var(--text-display-tracking)]"
+        className="hero-title mt-4 max-w-[18ch] text-[length:var(--text-display-size)] font-semibold leading-[var(--text-display-lh)] tracking-[var(--text-display-tracking)]"
       >
         {title}
       </h1>
-      <p data-hero-fade className="mt-6 max-w-xl text-lg text-ink-muted">
+      <p className="mt-6 max-w-[62ch] text-[length:var(--text-body-size)] leading-[var(--text-body-lh)] text-ink-secondary">
         {tagline}
       </p>
     </section>

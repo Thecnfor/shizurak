@@ -247,6 +247,69 @@ html.rift-t2::view-transition-new(root) {
   }
 }
 
+/* ── 首页 hero 自撕（spec §4 首页①：进站唯一一次 T1 自撕显现）──
+   几何与 rift-new 同源（对角 clip-path  wiped-in + translate(-4%,2%)→none）：rift-new
+   绑在 ::view-transition 伪元素上且 e2e 要按独立动画名断言，故不复用同名 keyframe
+   而是同名另定义一份——改动 rift-new 几何时必须同步这里（两域不能共享声明）。
+   300ms = T1 预算（§7 红线）；时长/easing 全走 CSS 令牌，零 JS（CSS 动画挂载即
+   跑一次，天然 once-per-page-load）。reduced-motion → 文件尾统一静态化。 */
+@keyframes hero-reveal {
+  from {
+    clip-path: polygon(-10% 0, -10% 0, -10% 110%, -10% 110%);
+    transform: translate(-4%, 2%);
+  }
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    transform: none;
+  }
+}
+.hero-title {
+  animation: hero-reveal 300ms var(--ease-rift) both;
+}
+
+/* ── 信纸排印（spec §1.2/§1.3，拒绝清单：列表不是卡片）──
+   mono micro 元信息：字号/行高/字距全部取主题令牌（幕人格 0.75rem/0.2em） */
+.mono-micro {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro-size);
+  line-height: var(--text-micro-lh);
+  letter-spacing: var(--text-micro-tracking);
+  text-transform: uppercase;
+  font-weight: var(--text-micro-weight);
+}
+/* 信纸行：hairline 分隔 + 上下大留白，整行就是一个链接（.paper-row 挂在 Link 上）。
+   hover 唯一动静：左缘 ≤4px 针脚渐显 + 标题转 full ink（拒绝清单：无大幅位移/缩放，
+   且背景渐变不构成唯一状态提示——标题颜色同步变化） */
+.paper-row {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-block: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.paper-row::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-entrance);
+}
+.paper-row:hover::before {
+  opacity: 0.35;
+}
+.paper-row .paper-row-title {
+  color: var(--ink-secondary);
+  transition: color 0.2s var(--ease-entrance);
+}
+.paper-row:hover .paper-row-title {
+  color: var(--ink);
+}
+
 /* CSS 原生滚动进度条（零 JS，lumen 承诺）：加 .scroll-progress 即可用 */
 .scroll-progress {
   position: fixed;
@@ -373,6 +436,10 @@ html.rift-t2::view-transition-new(root) {
   }
   /* 底噪四项全关（SSR/未水合也成立；水合后由 HumGate 挂 .hum-off 双保险） */
   .hum-tremor {
+    animation: none;
+  }
+  /* hero 自撕同样静态化（spec §2.2 铁律 5：reduced 下不进转场动画） */
+  .hero-title {
     animation: none;
   }
   /* 一键静态化所有 ViewTransition（定位/缩放清零，保留必要 opacity） */

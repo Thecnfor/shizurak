@@ -32,6 +32,11 @@ export default async function RootLayout({
   return (
     <html
       lang={lang}
+      // SSR 默认幕（registry 的 defaultThemeId）：生成态 CSS 的主题变量只认
+      // [data-theme=…] 选择器，不给 SSR 属性则首帧无令牌（hero 自撕的 var(--ease-rift)
+      // 整条声明 IACVT）。localStorage 选择在首帧前由 theme-init 覆写，水合后由
+      // ThemeProvider 同步——suppressHydrationWarning 正是为此
+      data-theme="void"
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${inter.variable}`}
     >

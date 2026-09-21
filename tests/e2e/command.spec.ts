@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   sampleVtWindow,
+  settleDeferredBoundaries,
   watchAttributeLifecycle,
   watchClassAppear,
 } from "./probes";
@@ -9,6 +10,7 @@ test("⌘K 打开面板并执行主题命令", async ({ page }) => {
   await page.goto("/zh");
   // 命令面板独立 chunk：以自身就绪探针为准（键盘监听注册同帧翻转）
   await expect(page.locator("[data-command-ready]")).toBeAttached();
+  await settleDeferredBoundaries(page);
   await page.keyboard.press("ControlOrMeta+k");
   await expect(page.getByPlaceholder("搜索或输入命令…")).toBeVisible();
   await page.keyboard.type("流明");
@@ -19,6 +21,7 @@ test("⌘K 打开面板并执行主题命令", async ({ page }) => {
 test("导航命令跳转", async ({ page }) => {
   await page.goto("/zh");
   await expect(page.locator("[data-command-ready]")).toBeAttached();
+  await settleDeferredBoundaries(page);
   await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("项目");
   await page.keyboard.press("Enter");
@@ -35,6 +38,9 @@ test("导航命令跳转也吃 T1 撕幕（driver 覆盖 router.push）", async 
 }) => {
   await page.goto("/zh");
   await expect(page.locator("[data-command-ready]")).toBeAttached();
+  // 先沉降再装探针：否则 startup tear（边界定稿的无点名 VT）会被误读成
+  // “跳转也吃了 T1”的正向证据
+  await settleDeferredBoundaries(page);
   const seen = watchClassAppear(page, "rift-tear");
   await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("项目");
@@ -48,6 +54,7 @@ test("⌘K 拉焦：打开时遮罩层带 data-focus-pull，且在 T3 预算内�
 }) => {
   await page.goto("/zh");
   await expect(page.locator("[data-command-ready]")).toBeAttached();
+  await settleDeferredBoundaries(page);
   const probe = watchAttributeLifecycle(page, "data-focus-pull", 1500); // 不 await：探针常驻页面 1.5s，让它与按键并发
   await page.keyboard.press("ControlOrMeta+k");
   const { seen, heldMs } = await probe;
@@ -77,6 +84,9 @@ test("⌘K 换肤不吃幕语法（morph 不拿 rift-* 类，走 UA crossfade）
 }) => {
   await page.goto("/zh");
   await expect(page.locator("[data-command-ready]")).toBeAttached();
+  // 首页幕②的 Suspense 边界会在 ≈3.4s 定稿并触发一次无点名 VT（startup tear），
+  // 与换肤 morph 无关却会落进 4s 采样窗——先沉降再装探针（见 probes 注释）
+  await settleDeferredBoundaries(page);
   const probe = sampleVtWindow(page, ["rift-t1", "rift-t2", "rift-tear"], {
     declared: true, // 本用例的预算门禁看声明时长
     durationMs: 4000,
@@ -104,6 +114,7 @@ test.describe("reduced-motion", () => {
   test("T3 直通：不出现拉焦标记，面板直接出现", async ({ page }) => {
     await page.goto("/zh");
     await expect(page.locator("[data-command-ready]")).toBeAttached();
+    await settleDeferredBoundaries(page);
     const probe = watchAttributeLifecycle(page, "data-focus-pull", 1500);
     await page.keyboard.press("ControlOrMeta+k");
     expect((await probe).seen).toBe(false);

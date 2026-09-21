@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   sampleVtWindow,
+  settleDeferredBoundaries,
   watchClassAppear,
   watchClassLifecycle,
 } from "./probes";
@@ -35,6 +36,9 @@ test("T1 撕幕：路由切换出现 html.rift-tear 且在预算内消失", asyn
   await page.goto("/zh");
   // 导演随水合安装（包装 document.startViewTransition）；导航必须走客户端路由才会有 VT
   await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+  // 先等首页边界的 startup tear 落地再装探针：否则那一撕与点击导航的受测撕幕
+  // 在 6 并行下撞车，heldMs 墙钟被拖飘（实测 627ms 破 600ms 上限）
+  await settleDeferredBoundaries(page);
   // 正向语法类 rift-t1 与 shader 锚点 rift-tear 同窗跟踪（rift-t1 在 native 调用前就挂，
   // 比 rift-tear 早 ready 那几十毫秒；两者都必须在预算内摘除）
   const grammar = watchClassAppear(page, "rift-t1");
