@@ -159,6 +159,12 @@ export function mountRift(
 
   return {
     dispose() {
+      // GL 上下文主动归还（数量有上限，反复重挂会撞顶）：放在解监听之前，确保无论
+      // 后续步骤是否抛错都已释放。但只在画布节点已退役时 lose——deps 变化后原地
+      // 重挂时 ogl 复用同一 context，此时 lose 会把新层打成白屏
+      if (!canvas.isConnected) {
+        gl.getExtension("WEBGL_lose_context")?.loseContext();
+      }
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
       window.removeEventListener("mousemove", onMove);

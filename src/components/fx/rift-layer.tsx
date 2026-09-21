@@ -44,24 +44,29 @@ export function RiftLayer() {
     let layer: { dispose(): void } | null = null;
     let state: RiftState | null = null;
     let alive = true;
-    import("@/lib/gl/rift").then(({ createRiftState, mountRift }) => {
-      if (!alive) return;
-      try {
-        // 挂载时刻从 store 取最新 hum/rift：不闭包依赖这两个值，滑杆变化走下方热更新
-        const live = useThemeStore.getState().resolved.effects;
-        state = createRiftState({
-          breath: live.hum.breath,
-          intensity: live.rift.intensity,
-        });
-        layer = mountRift(canvas, state);
-        stateRef.current = state;
-        // 转场层只认 state（含 setTear/setCollapse/setShift），不是 layer
-        riftGlobalScope().__rift = state;
-      } catch (e) {
-        // WebGL 上下文创建失败：维持静态幕面，降级留痕便于排查（不静默吞错）
-        console.warn("[rift] GL 不可用，降级静态幕布", e);
-      }
-    });
+    import("@/lib/gl/rift")
+      .then(({ createRiftState, mountRift }) => {
+        if (!alive) return;
+        try {
+          // 挂载时刻从 store 取最新 hum/rift：不闭包依赖这两个值，滑杆变化走下方热更新
+          const live = useThemeStore.getState().resolved.effects;
+          state = createRiftState({
+            breath: live.hum.breath,
+            intensity: live.rift.intensity,
+          });
+          layer = mountRift(canvas, state);
+          stateRef.current = state;
+          // 转场层只认 state（含 setTear/setCollapse/setShift），不是 layer
+          riftGlobalScope().__rift = state;
+        } catch (e) {
+          // WebGL 上下文创建失败：维持静态幕面，降级留痕便于排查（不静默吞错）
+          console.warn("[rift] GL 不可用，降级静态幕布", e);
+        }
+      })
+      .catch((e) => {
+        // chunk 本身加载失败（网络 / 发版后 chunk hash 失效）：与 GL 失败同等留痕，不静默白幕
+        console.warn("[rift] chunk 加载失败", e);
+      });
     return () => {
       alive = false;
       layer?.dispose();
