@@ -29,6 +29,11 @@ function tokensToDecls(theme: Theme, mode: ThemeMode): string {
     decls.push(`  --text-${kebab(level)}-tracking: ${v.tracking};`);
     decls.push(`  --text-${kebab(level)}-weight: ${v.weight};`);
   }
+  // 幕语法的 CSS 侧计时曲线：从 motion token 直出，不再手镜像。
+  // --ease-entrance 给光标环这类 CSS 过渡，--ease-rift 给 T1/T2 的 root 伪元素动画
+  // （转场计时源仍是 theme.motion 的 JS 值，这两条只是让 CSS 动画跟它同曲线）
+  decls.push(`  --ease-entrance: ${theme.motion.easing.entrance};`);
+  decls.push(`  --ease-rift: ${theme.motion.easing.rift};`);
   return decls.join("\n");
 }
 

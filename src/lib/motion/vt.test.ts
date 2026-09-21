@@ -3,6 +3,7 @@ import { voidTheme } from "@/themes/registry";
 import {
   installRiftTransitionDriver,
   isRiftRouteTransition,
+  isRouteTransitionCall,
   type RiftDriverSnapshot,
   riftGrammarFor,
 } from "./vt";
@@ -42,6 +43,17 @@ describe("isRiftRouteTransition（调用形态识别）", () => {
   });
 });
 
+describe("isRouteTransitionCall（纯形态判定）", () => {
+  it("只看形态，不看 types（rift-collapse 靠它拿语法）", () => {
+    expect(isRouteTransitionCall(update)).toBe(false);
+    expect(isRouteTransitionCall()).toBe(false);
+    expect(isRouteTransitionCall({ update })).toBe(true);
+    expect(isRouteTransitionCall({ update, types: ["rift-collapse"] })).toBe(
+      true,
+    );
+  });
+});
+
 describe("riftGrammarFor（正向语法闸门）", () => {
   const gate = { reduced: false, intensity: 0.7 };
   it("void 人格的路由过渡 → rift-t1", () => {
@@ -57,11 +69,38 @@ describe("riftGrammarFor（正向语法闸门）", () => {
       null,
     );
   });
-  it("非路由形态（回调 / rift-* types）→ null", () => {
+  it("非路由形态（回调 / 无 update）→ null", () => {
     expect(riftGrammarFor(update, gate)).toBe(null);
+    expect(riftGrammarFor({ types: [] } as never, gate)).toBe(null);
+    expect(riftGrammarFor(undefined, gate)).toBe(null);
+  });
+  it("rift-collapse 点名 → rift-t2（数组与 Set 两种形状都吃）", () => {
     expect(riftGrammarFor({ update, types: ["rift-collapse"] }, gate)).toBe(
-      null,
+      "rift-t2",
     );
+    expect(
+      riftGrammarFor({ update, types: new Set(["rift-collapse"]) }, gate),
+    ).toBe("rift-t2");
+  });
+  it("其它 rift-* 点名既不拿 T2 也不拿 T1 → null（单语法铁律的派发面）", () => {
+    expect(riftGrammarFor({ update, types: ["rift-tear"] }, gate)).toBe(null);
+    expect(
+      riftGrammarFor({ update, types: ["rift-anything", "default"] }, gate),
+    ).toBe(null);
+  });
+  it("烈度/减少动画门优先于点名：rift-collapse 也进不了崩解路径", () => {
+    expect(
+      riftGrammarFor(
+        { update, types: ["rift-collapse"] },
+        { reduced: false, intensity: 0 },
+      ),
+    ).toBe(null);
+    expect(
+      riftGrammarFor(
+        { update, types: ["rift-collapse"] },
+        { reduced: true, intensity: 0.7 },
+      ),
+    ).toBe(null);
   });
 });
 
@@ -211,4 +250,100 @@ describe("installRiftTransitionDriver（挂载/还原/类生命周期）", () =>
       uninstall();
     }
   });
+
+  it("rift-collapse：挂 rift-t2 而非 T1，同步写 --rift-t2-duration，finished 归零摘类拔变量", async () => {
+    const { make, transitions } = fakeNative();
+    document.startViewTransition = make;
+    const setCollapse = vi.fn();
+    const setTear = vi.fn();
+    Object.defineProperty(window, "__rift", {
+      configurable: true,
+      value: { setTear, setShift: vi.fn(), setCollapse },
+    });
+    const uninstall = installRiftTransitionDriver(() => snapshot());
+    try {
+      document.startViewTransition({
+        update,
+        types: new Set(["rift-collapse"]),
+      });
+      expect(root.classList.contains("rift-t2")).toBe(true);
+      // 单语法互斥：崩解这程上 T1 的类与 shader 锚点都不存在
+      expect(root.classList.contains("rift-t1")).toBe(false);
+      expect(root.classList.contains("rift-tear")).toBe(false);
+      // min(600, duration.section)：void 的 section=800 → 封到 600ms 上限
+      expect(root.style.getPropertyValue("--rift-t2-duration")).toBe("600ms");
+
+      transitions[0].resolveReady();
+      await transitions[0].ready;
+      // 崩解时间线以 ready 为锚（与 CSS 伪元素动画同起点），走真 rAF 推帧
+      await frames(3);
+      expect(setCollapse).toHaveBeenCalled();
+      expect(setCollapse.mock.calls.at(-1)?.[0]).toBeGreaterThan(0);
+      // T2 不该顺手驱动 T1 的 tear 通道
+      expect(setTear).not.toHaveBeenCalled();
+
+      transitions[0].resolveFinished();
+      await transitions[0].finished;
+      await microtasks();
+      expect(setCollapse).toHaveBeenLastCalledWith(0);
+      expect(root.classList.contains("rift-t2")).toBe(false);
+      expect(root.style.getPropertyValue("--rift-t2-duration")).toBe("");
+    } finally {
+      uninstall();
+      Reflect.deleteProperty(window, "__rift");
+    }
+  });
+
+  it("崩解时长与 motion token 同源：section 缩短时 CSS 变量跟着缩", () => {
+    const { make } = fakeNative();
+    document.startViewTransition = make;
+    const fast: RiftDriverSnapshot = {
+      motion: { ...MOTION, duration: { ...MOTION.duration, section: 420 } },
+      riftIntensity: 0.7,
+    };
+    const uninstall = installRiftTransitionDriver(() => fast);
+    try {
+      document.startViewTransition({ update, types: ["rift-collapse"] });
+      expect(root.style.getPropertyValue("--rift-t2-duration")).toBe("420ms");
+    } finally {
+      uninstall();
+      root.classList.remove("rift-t2");
+      root.style.removeProperty("--rift-t2-duration");
+    }
+  });
+
+  it("intensity===0 的崩解点名（lumen 点 Lab）：两类都不挂，setCollapse 零调用", async () => {
+    const { make, transitions } = fakeNative();
+    document.startViewTransition = make;
+    const setCollapse = vi.fn();
+    Object.defineProperty(window, "__rift", {
+      configurable: true,
+      value: { setTear: vi.fn(), setShift: vi.fn(), setCollapse },
+    });
+    const uninstall = installRiftTransitionDriver(() => snapshot(0));
+    try {
+      document.startViewTransition({ update, types: ["rift-collapse"] });
+      expect(root.classList.contains("rift-t2")).toBe(false);
+      expect(root.style.getPropertyValue("--rift-t2-duration")).toBe("");
+      transitions[0].resolveReady();
+      transitions[0].resolveFinished();
+      await transitions[0].finished;
+      await microtasks();
+      expect(setCollapse).not.toHaveBeenCalled();
+    } finally {
+      uninstall();
+      Reflect.deleteProperty(window, "__rift");
+    }
+  });
 });
+
+/** 等几帧真 rAF（GSAP ticker 靠它跑），给时间线一个推帧机会 */
+async function frames(n: number) {
+  for (let i = 0; i < n; i++)
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+}
+
+/** 把 finished 上的 then 链（含 settle）排干 */
+async function microtasks() {
+  for (let i = 0; i < 6; i++) await Promise.resolve();
+}

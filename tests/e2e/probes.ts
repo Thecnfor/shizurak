@@ -22,11 +22,20 @@ export interface ClassLifecycle {
   oldAnim: string | null;
   /** 出现那一帧在飞的 root 伪元素动画最大声明时长（毫秒） */
   declaredMs: number | null;
+  /** 存活窗口内 old(root) 出现过的动画名集合（rAF 逐帧，只有真在飞才非空） */
+  anims: string[];
+  /** 存活窗口内的最大声明时长（需 declared:true） */
+  declaredMaxMs: number | null;
+  /** 整窗内出现过的「禁止类」（单语法互斥守卫用） */
+  forbidSeen: string[];
 }
 
 /**
  * 类生命周期探针：MutationObserver 盯 <html> 的 class，出现记 t0 并现场取证
- * （伪元素动画名 + 声明时长），消失回报存活时长。
+ * （伪元素动画名 + 声明时长），类消失时回报存活时长；**只在类存活的那段窗口内**
+ * 逐帧采样 root 伪元素动画名——语法类是在 native startViewTransition 之前挂的，
+ * 那一帧伪元素树还没建（读到 "none"），单帧取证不够；而采样又不能铺到整个导航
+ * 窗口（dev 提交可吃数秒，逐帧 rAF 反而污染被测行为）。
  * 两个定时器分开算（负载解耦，实测必需）：
  * · `timeoutMs`——从未出现的判定窗口（从装探针起算）；
  * · `graceMs`——出现后没等到消失的挂死判定（从 t0 起算）。
@@ -38,6 +47,14 @@ export interface ClassLifecycleOptions {
   timeoutMs?: number;
   /** 出现后等待消失的宽限（从 t0 起算，默认 1200ms） */
   graceMs?: number;
+  /** 存活窗口内逐帧枚举在飞动画拿声明时长（贵，默认 false） */
+  declared?: boolean;
+  /**
+   * 同窗互斥守卫：这些类一旦出现就记进 forbidSeen（不提前结束探针）。
+   * 拿它做「一次转场只用一种语法」的反向断言，而不是另开一个整窗监听器——
+   * 后者要么绑上导航提交延时，要么得死等到自己超时。
+   */
+  forbid?: string[];
 }
 
 export function watchClassLifecycle(
@@ -45,24 +62,31 @@ export function watchClassLifecycle(
   className: string,
   opts: ClassLifecycleOptions = {},
 ): Promise<ClassLifecycle> {
-  const { timeoutMs = 2500, graceMs = 1200 } = opts;
+  const {
+    timeoutMs = 2500,
+    graceMs = 1200,
+    declared = false,
+    forbid = [],
+  } = opts;
   return page.evaluate(
-    ([cls, ms, grace]) =>
+    ([cls, ms, grace, wantDeclared, forbidden]) =>
       new Promise<ClassLifecycle>((resolve) => {
         const el = document.documentElement;
         const has = () => el.classList.contains(cls);
-        /** 出现那一帧的现场证据：动画名 + 在飞的 root 伪元素动画声明时长 */
-        const evidence = () => {
-          const anim = getComputedStyle(
-            el,
-            "::view-transition-old(root)",
-          ).animationName;
-          // React 自己也是这样枚举伪元素动画的（见 react-dom 的 startViewTransition）
+        const forbidSeen = new Set<string>();
+        const checkForbid = () => {
+          for (const f of forbidden)
+            if (el.classList.contains(f)) forbidSeen.add(f);
+        };
+        const oldName = () =>
+          getComputedStyle(el, "::view-transition-old(root)").animationName;
+        // React 自己也是这样枚举伪元素动画的（见 react-dom 的 startViewTransition）
+        const declaredNow = () => {
           const flying = el.getAnimations({ subtree: true }).filter((a) => {
             const p = (a.effect as KeyframeEffect | null)?.pseudoElement;
             return typeof p === "string" && p.startsWith("::view-transition");
           });
-          const declared = flying.length
+          return flying.length
             ? Math.max(
                 ...flying.map(
                   (a) =>
@@ -71,24 +95,55 @@ export function watchClassLifecycle(
                 ),
               )
             : null;
-          return { anim, declared };
         };
         let t0 = 0;
         let oldAnim: string | null = null;
         let declaredMs: number | null = null;
+        let declaredMaxMs: number | null = null;
+        const anims = new Set<string>();
         let hang = 0;
+        let raf = 0;
         const finish = (heldMs: number | null) => {
           mo.disconnect();
           window.clearTimeout(appear);
           if (hang) window.clearTimeout(hang);
-          resolve({ seen: t0 > 0, heldMs, oldAnim, declaredMs });
+          if (raf) cancelAnimationFrame(raf);
+          resolve({
+            seen: t0 > 0,
+            heldMs,
+            oldAnim,
+            declaredMs,
+            anims: [...anims],
+            declaredMaxMs,
+            forbidSeen: [...forbidSeen],
+          });
+        };
+        /** 存活窗口内的逐帧采样（rAF + 一次互斥守卫扫描） */
+        const watchFlight = () => {
+          if (!has()) {
+            finish(performance.now() - t0);
+            return;
+          }
+          checkForbid();
+          anims.add(oldName());
+          if (wantDeclared) {
+            const d = declaredNow();
+            if (d !== null) declaredMaxMs = Math.max(declaredMaxMs ?? 0, d);
+          }
+          if (performance.now() - t0 > grace) return;
+          raf = requestAnimationFrame(watchFlight);
         };
         const arm = () => {
           t0 = performance.now();
-          ({ anim: oldAnim, declared: declaredMs } = evidence());
+          oldAnim = oldName();
+          declaredMs = declaredNow();
           hang = window.setTimeout(() => finish(null), grace);
+          raf = requestAnimationFrame(watchFlight);
         };
         const mo = new MutationObserver(() => {
+          // 互斥守卫走在判定分支之前：禁止类本身也是一次 class 变动，
+          // 错过它就等于把「一次转场只用一种语法」这条铁律测了空
+          checkForbid();
           if (!t0) {
             if (!has()) return;
             arm();
@@ -99,12 +154,19 @@ export function watchClassLifecycle(
         });
         mo.observe(el, { attributes: true, attributeFilter: ["class"] });
         const appear = window.setTimeout(() => finish(null), ms);
+        checkForbid();
         if (has()) {
           arm();
           window.clearTimeout(appear);
         }
       }),
-    [className, timeoutMs, graceMs] as [string, number, number],
+    [className, timeoutMs, graceMs, declared, forbid] as [
+      string,
+      number,
+      number,
+      boolean,
+      string[],
+    ],
   );
 }
 

@@ -7,13 +7,22 @@ import { ThemeSwitcher } from "@/components/site/theme-switcher";
    延迟用静态内联样式；hum 关闭靠 <html>.hum-off 联动停颤（见 cursor-ring.tsx） */
 const TREMOR_DELAYS = ["0s", "0.6s", "1.2s", "1.8s"];
 
+/** transitionTypes 直递 Next Link → React addTransitionType →
+ *  startViewTransition({ update, types })，由 RiftDirector 按点名派发幕语法
+ *  （spec §2.2：任意页→Lab 是 T2 信号崩解的合法触发点之一） */
+type NavLink = { href: string; label: string; transitionTypes?: string[] };
+
 export async function SiteNav({ lang }: { lang: string }) {
   const dict = await getDictionary();
-  const links = [
+  const links: NavLink[] = [
     { href: `/${lang}/posts`, label: dict.nav.posts },
     { href: `/${lang}/projects`, label: dict.nav.projects },
     { href: `/${lang}/about`, label: dict.nav.about },
-    { href: `/${lang}/lab`, label: dict.nav.lab },
+    {
+      href: `/${lang}/lab`,
+      label: dict.nav.lab,
+      transitionTypes: ["rift-collapse"],
+    },
     { href: `/${lang}/search`, label: dict.nav.search },
   ];
   return (
@@ -30,6 +39,7 @@ export async function SiteNav({ lang }: { lang: string }) {
             <Link
               key={l.href}
               href={l.href}
+              transitionTypes={l.transitionTypes}
               className="hum-tremor text-sm text-ink-muted hover:text-ink"
               style={
                 {

@@ -86,15 +86,10 @@ h3 {
   }
 }
 
-/* ── 底噪四项（spec §2.1 G3）：micro 微颤 + 幕环光标 ── */
-/* 幕人格 motion.easing.entrance 的 CSS 镜像：gen-theme-css 不产出 easing 变量，
-   改 void 主题曲线时需同步这里（仅幕环热态缩放用，非转场计时源） */
-:root {
-  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
-  /* 幕人格 motion.easing.rift 的 CSS 镜像（同 --ease-entrance 的同步义务）：
-     改 void 主题 easing.rift 时需同步这里；T1 撕幕曲线（进场急收） */
-  --ease-rift: cubic-bezier(0.85, 0, 0.15, 1);
-}
+/* ── 底噪四项（spec §2.1 G3）：micro 微颤 + 幕环光标 ──
+   --ease-entrance / --ease-rift 由 theme-vars.generated.css 从各人格 motion.easing
+   直出（旧 `:root` 手工镜像与它的「改 void 曲线时同步这里」义务注释已删：
+   曲线只有一处源头——主题数据；非幕人格拿到自己的曲线而非 void 的副本） */
 /* 0.2Hz 偶发 1px 位移；错相靠 --tremor-delay，禁止同步抖动 */
 @keyframes hum-tremor {
   0%,
@@ -176,7 +171,8 @@ h3 {
    门控架构：正向语法类。RiftDirector 在 native startViewTransition **调用之前**同步
    挂 html.rift-t1（root 伪元素树建立时就查 animation-name，晚挂来不及），
    finished 即摘。于是：
-   · 路由过渡且 rift 烈度 > 0 且非 reduced → rift-t1 → 本块撕幕；
+   · 路由过渡且 types 未点名任何 rift-* 且 rift 烈度 > 0 且非 reduced → rift-t1 → 本块撕幕；
+     （点名 rift-collapse 的走下面 T2 块）；
    · 换肤 morph（回调形态）/ intensity===0 人格（lumen、paper）/ reduced → 不挂类
      → 本块不参与 → UA 默认交叉淡入。旧 html:not(.theme-morph) 负向门控随此退役。
    单语法铁律（spec §2.2 铁律 3：一次转场只用 T1/T2/T3 之一）：root 伪元素的 animation-name
@@ -208,6 +204,46 @@ html.rift-t1::view-transition-new(root) {
   to {
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
     transform: none;
+  }
+}
+
+/* ── T2 信号崩解（spec §2.2：400–600ms，块状崩解→聚合；触发点仅 首页→文章 与
+   任意页→Lab）：与 T1 同一条正向门控——RiftDirector 在 native startViewTransition
+   前按 transitionTypes 点名（rift-collapse）同步挂 html.rift-t2，finished 即摘。
+   一次转场只拿到 rift-t1 或 rift-t2 之一（铁律 3），所以两块选择器天生互斥。
+   时长走 --rift-t2-duration：导演写入 min(600, motion.duration.section)，与它自己
+   那条 uCollapse 时间线同源；var 默认值 600ms 只在导演未就位时兜底。
+   内容切换藏在崩解之下：旧幕 opacity 至 55% 归零并保持隐去，新幕 0 压到 45% 再起，
+   两段交叠的正中就是 shader 里碎屑吞屏最盛的窗口（峰值同点 45%）。 */
+html.rift-t2::view-transition-old(root),
+html.rift-t2::view-transition-new(root) {
+  animation-duration: var(--rift-t2-duration, 600ms);
+  animation-timing-function: var(--ease-rift);
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+html.rift-t2::view-transition-old(root) {
+  animation-name: rift-collapse-old;
+}
+html.rift-t2::view-transition-new(root) {
+  animation-name: rift-collapse-new;
+}
+@keyframes rift-collapse-old {
+  0% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes rift-collapse-new {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
 
