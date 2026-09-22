@@ -8,6 +8,8 @@
 
 ## 0. 设计哲学
 
+> ⚠️ 本节已被[幕语法 v2](../superpowers/specs/2026-09-19-curtain-grammar-design.md) §0 替换（三定律 G1–G3 + 拒绝清单以 v2 为准）。
+
 ### 0.1 三条美学公理
 
 1. **极简工业风 = 信息密度即美**。每一个像素都要有职责：装饰即信息（HUD 遥测显示的是真实数据），留白即结构（网格对齐而非随意间距）。参考坐标：SpaceX 控制台、NASA 任务面板、Vercel/Geist 的克制、Braun 工业设计。
@@ -189,6 +191,8 @@ export interface ThemeOverrides {
 
 ## 2. 首发主题规格
 
+> ⚠️ 本节已被[幕语法 v2](../superpowers/specs/2026-09-19-curtain-grammar-design.md) §1–§2 替换（`void` 人格重铸为「幕」，tokens/动效/特效以 v2 为准）。
+
 ### 2.1 `void` · 深空（极客黑 · 太空歌剧）
 
 **模式**：仅 `dark`（深空没有白天）。**人格**：cinematic — 缓慢庄严的入场（1.2s 级）、滚动叙事、深空尺度感。
@@ -323,6 +327,8 @@ export interface ThemeOverrides {
 
 ## 5. 特效目录（Effects Catalog）
 
+> ⚠️ 本节已被[幕语法 v2](../superpowers/specs/2026-09-19-curtain-grammar-design.md) §5 替换（rift-layer 常驻底噪 + hum 体系；HUD 遥测/扫描线/星野等已入拒绝清单）。
+
 每个特效必须声明：**预算 / 降级 / reduced-motion** 三级路径。
 
 **实现顺序**（M0 先以 `starfield` 验证特效管线，其余递增）：`starfield`（M0）→ `hud-grid` / `telemetry`（M1）→ `nebula` WebGL shader（M1）→ `scanline`/`grain`/`reticle`/`launch-hero`（M1.5 打磨）。
@@ -342,6 +348,8 @@ export interface ThemeOverrides {
 ---
 
 ## 6. 动效语法（Motion Grammar）
+
+> ⚠️ 本节已被[幕语法 v2](../superpowers/specs/2026-09-19-curtain-grammar-design.md) §6 替换（转场词汇收敛为 T1 撕幕 / T2 垂帘 / T3 拉焦，一次转场只用其一）。
 
 ### 6.1 三系统分工律（GSAP × motion × ViewTransition，铁律 L4 展开）
 
@@ -385,6 +393,8 @@ export interface ThemeOverrides {
 
 ## 7. GenUI 视觉规范
 
+> ⚠️ 本节已被[幕语法 v2](../superpowers/specs/2026-09-19-curtain-grammar-design.md) §7 替换（HUD 皮肤改 stitch 缝补 / clean 双皮肤，预算表以 v2 为准）。
+
 ### 7.1 三引擎职责（视觉层视角）
 
 | | json-render | OpenUI | **RSC** |
@@ -424,6 +434,8 @@ export interface ThemeOverrides {
 ---
 
 ## 8. 页面级设计
+
+> ⚠️ 本节已被[幕语法 v2](../superpowers/specs/2026-09-19-curtain-grammar-design.md) §8 替换（首页三幕信纸、名录 mono 化、验收清单以 v2 为准）。
 
 ### 8.1 首页（`/`）
 

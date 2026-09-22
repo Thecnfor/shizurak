@@ -76,15 +76,15 @@ Most personal blogs are static sites with an AI chat widget bolted on as an afte
 
 ## 🎨 Themes
 
-| | `void` · 深空 | `lumen` · 流明 |
+| | `void` · 幕 (Curtain) | `lumen` · 流明 |
 |:--|:--|:--|
-| **Personality** | SpaceX space opera | OpenAI × Apple minimal |
-| **Motion** | cinematic — slow, ceremonial reveals; scroll-driven narratives | precise — restrained micro-motion, generous whitespace |
-| **Effects** | WebGL nebula · parallax starfield · HUD telemetry (real data) · scanlines · reticle cursor | none — *zero effect code downloaded* |
-| **GenUI skin** | HUD panels — cut corners, tick marks, tabular numerals | clean cards — soft radii, quiet shadows |
-| **Launch sequence** | countdown → ignition → ascent → orbit (GSAP timeline) | instant, fade-in |
+| **Personality** | digital fabric — whitespace is the cloth, transitions are the tear; still as dead, moving as ripping silk ([Rift Grammar v2 →](./docs/superpowers/specs/2026-09-19-curtain-grammar-design.md)) | precise — restrained micro-motion, generous whitespace |
+| **Motion** | T1 tear / T2 collapse / T3 focus-pull transition grammar — effect budget lives in the 300–600ms transition, daily screen stays near-still | none beyond shared UI micro-motion |
+| **Effects** | rift-layer 常驻底噪 + T1/T2/T3 转场语法 | none — *zero effect code downloaded* |
+| **GenUI skin** | stitch 缝补 — sharp corners, visible seams, mono micro type | clean cards — soft radii, quiet shadows |
+| **Launch sequence** | hero self-tear (CSS clip-path wipe, zero JS) | instant, fade-in |
 
-Plus a **personalization layer**: rotate the accent hue in OKLCH, dial effect intensity, scale motion speed — shareable via URL. Reserved themes (`terminal`, `paper`, `cyber`) validate the contract. [Adding a theme = 5 steps →](./docs/specs/01-design-spec.md#23-预留主题与新增清单)
+Reserved themes `terminal` & `paper` ship as contract proofs; `cyber` stays reserved. [Adding a theme = 5 steps →](./docs/specs/01-design-spec.md#23-预留主题与新增清单)
 
 ## 🧰 Tech stack
 
