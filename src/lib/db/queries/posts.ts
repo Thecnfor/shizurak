@@ -29,9 +29,13 @@ const LIST_DEADLINE_MS = 3_000;
  * 只拿 deadline 不吞拒绝时，拒绝仍被缓存工作单元升为 prerender fatal、杀死
  * 构建（页面侧 try/catch 封不住）——而 Cache Components 又禁止空
  * generateStaticParams。出路只能是「永不拒绝」：边界内 catch 归空态。
- * 代价：空列表会以 hours 档入缓存，DB 恢复后靠 revalidate 自愈（≤1h）；
- * 发布动作本身会 revalidateTag("posts")，不可用期间也发不了新文，无叠加风险。
+ * T10 二审修订（fix 批次）：故障空态不再以 hours 档入缓存——catch 分支追加
+ * 短档 cacheLife({revalidate: 30})，DB 抖动自愈 ≤30s，不再出现「恢复后文章
+ * 消失一小时」。依据（Next 16.3.5 源码 use-cache/cache-life.js）：同一缓存
+ * 工作单元内多次 cacheLife 取最小 explicitRevalidate，且无「首 await 前」限制，
+ * 顶部 "hours" + catch 短档的写法成立；成功路径（含健康 DB 的真零结果）仍走 hours。
  */
+const FAILURE_CACHE_LIFE = { revalidate: 30 } as const;
 export async function listPublishedPosts(
   locale: string,
 ): Promise<PostSummary[]> {
@@ -61,6 +65,7 @@ export async function listPublishedPosts(
       "listPublishedPosts",
     );
   } catch {
+    cacheLife(FAILURE_CACHE_LIFE);
     return [];
   }
 }
@@ -104,7 +109,9 @@ export async function searchPosts(
       "searchPosts",
     );
   } catch {
-    // 同 listPublishedPosts：边界内化归空态，构建/运行都不得被 DB 拒绝杀死
+    // 同 listPublishedPosts：边界内化归空态，构建/运行都不得被 DB 拒绝杀死；
+    // 故障空态降短档，避免一次抖动把空搜索结果锁进缓存一小时
+    cacheLife(FAILURE_CACHE_LIFE);
     return [];
   }
 }
