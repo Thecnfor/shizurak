@@ -46,4 +46,15 @@ describe("THEME_INIT_SCRIPT", () => {
     runScript();
     expect(document.documentElement.getAttribute("data-theme")).toBeNull();
   });
+
+  it("白名单由 registry 派生：非首位注册主题（paper）也能还原", () => {
+    // 旧实现硬编码 ["void","lumen"]，paper/terminal 持久化后会被静默丢弃；
+    // 派生自 registry 后，任何注册 id 都在名单内
+    localStorage.setItem(
+      "shizurak:theme",
+      JSON.stringify({ themeId: "paper", overrides: {} }),
+    );
+    runScript();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("paper");
+  });
 });

@@ -77,4 +77,25 @@ describe("GenuiRenderer（真实 json-render 渲染）", () => {
     expect(container.querySelector(".genui-tear")).toBeNull();
     expect(container.querySelector('[data-skin="clean"]')).not.toBeNull();
   });
+
+  it("ActionButton（T9 评审批 I）：渲染 label 并派发到 ui-actions 通道；内核未就绪则禁用", async () => {
+    // 测试环没有 KernelProvider → useKernelService 返回 undefined → 按钮禁用；
+    // 注册进 json-render registry（而非从 catalog 删掉）本身就是断言目标
+    const actionSpec: Spec = {
+      root: "btn",
+      elements: {
+        btn: {
+          type: "ActionButton",
+          props: { actionId: "theme.cycle", label: "换个幕" },
+        },
+      },
+    };
+    render(<GenuiRenderer spec={actionSpec} />);
+    const btn = screen.getByRole("button", { name: "换个幕" });
+    expect(btn).toBeDisabled();
+    // 点击不炸（无服务时容错）
+    btn.click();
+    await Promise.resolve();
+    expect(screen.getByRole("button", { name: "换个幕" })).toBeInTheDocument();
+  });
 });

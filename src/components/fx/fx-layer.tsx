@@ -12,6 +12,11 @@ export function FxLayer() {
   const effects = useThemeStore((s) => s.resolved.effects);
   const tier = useFxTier();
   const reduced = usePrefersReducedMotion();
+  // hydration 门禁（T9 评审批 I，同 agent-dock 模式）：SSR 首帧无条件渲染
+  // data-fx=fallback，而客户端首帧可能因 reduced/存储恢复而返回 null，
+  // 两边不一致即水合警告。挂载前统一渲染 null，挂载后再进入真实分支。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [Background, setBackground] = useState<ComponentType<FxProps> | null>(
     null,
   );
@@ -39,7 +44,7 @@ export function FxLayer() {
     };
   }, [enabled, meetsTier, entry]);
 
-  if (!enabled) return null;
+  if (!mounted || !enabled) return null;
 
   if (!meetsTier || !Background) {
     // 低端设备降级：静态渐变（零 JS 开销）

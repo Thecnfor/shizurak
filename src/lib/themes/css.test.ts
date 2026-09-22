@@ -21,6 +21,19 @@ describe("themeVarsCss", () => {
     expect(css).toContain("--radius-sm: 0px");
     expect(css).toContain("--text-h1-size:");
   });
+  it("glow 冲突已拆：--glow 归 color.glow，阴影侧走 --shadow-glow", () => {
+    // 旧管线 color.glow 与 elevation.glow 同导 --glow，后写掩盖前写（T9 评审批 M）
+    const block = css.slice(
+      css.indexOf('[data-theme="void"]'),
+      css.indexOf("}", css.indexOf('[data-theme="void"]')),
+    );
+    expect(block).toContain(`--glow: ${voidTheme.tokens.dark!.color.glow};`);
+    expect(block).toContain(
+      `--shadow-glow: ${voidTheme.tokens.dark!.elevation.glow};`,
+    );
+    // 同一块内 --glow 只出现一次（色值），不再有阴影版覆盖
+    expect(block.match(/--glow:/g)?.length).toBe(1);
+  });
   it("accent 直出令牌色值（hue-rotate 钩子已删除）", () => {
     expect(css).toContain("--accent: #cfe4ff;");
     expect(css).toContain("--accent-hover: #e6f1ff;");

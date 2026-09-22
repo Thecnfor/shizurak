@@ -4,6 +4,9 @@ import type {
   ComponentRegistry,
   ComponentRenderProps,
 } from "@json-render/react";
+import { useState } from "react";
+import type { ActionsService } from "@/lib/kernel/plugins/ui-actions";
+import { useKernelService } from "@/lib/kernel/react";
 import { cn } from "@/lib/utils";
 import { frameClass, useGenUiSkin } from "./skin";
 
@@ -143,6 +146,44 @@ function Callout({ element }: RCP) {
   );
 }
 
+/**
+ * ActionButton（T9 评审批 I）：渲染 label，点击派发到内核 ui-actions 通道
+ * （actions.invoke：L0/L1 直接执行，L2 转 pending 确认卡，见 ui-actions 插件）。
+ * 内核未就绪时禁用；执行报错就地披露（不静默吞）。
+ */
+function ActionButton({ element }: RCP) {
+  const { skin } = useGenUiSkin();
+  const actions = useKernelService<ActionsService>("actions");
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={actions === undefined}
+        onClick={() => {
+          setError(null);
+          void actions
+            ?.invoke(
+              s(element.props.actionId),
+              (element.props.params as Record<string, unknown> | undefined) ??
+                {},
+            )
+            .then((r) => {
+              if (r.status === "error") setError(r.error);
+            });
+        }}
+        className={frameClass(
+          skin,
+          "rounded-md border border-border-strong bg-bg-elevated px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-accent hover:border-accent disabled:opacity-50",
+        )}
+      >
+        {s(element.props.label)}
+      </button>
+      {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
+    </div>
+  );
+}
+
 export const genuiRegistry: ComponentRegistry = {
   Stack,
   Card,
@@ -150,4 +191,5 @@ export const genuiRegistry: ComponentRegistry = {
   PostCard,
   MetricGrid,
   Callout,
+  ActionButton,
 };

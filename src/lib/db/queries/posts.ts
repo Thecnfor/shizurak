@@ -24,11 +24,13 @@ const LIST_DEADLINE_MS = 3_000;
  * 期限必须在 cache 边界**内**跑（I-1 定案）：此前页面层用 withDeadline
  * 去 race 这个 `use cache` 函数的 promise，超时时被 race 掉的那个 promise
  * 仍在后台 pending 直到 ≈11s 才落地——Next 对此有专门告警（use-cache-errors：
- * "stuck on shared state from the outer render scope"，缓存工作单元被边界外
- * 创建的 promise 拖住），DB 不可达时这条 in-flight 填充还会长时间挂死。
- * 现在边界自己 3s 内定胜负；reject 不入缓存已对 Next 16.3.5 源码核实
- * （use-cache-wrapper 的 ResolvableSharedCacheResult.reject 立即 cleanup，
- * 失败的收集不留条目，下次访问重取）；驱动层另有 connect/statement 封顶，见 client.ts。
+ * "stuck on shared state from the outer render scope"）。
+ * T9 评审批 C 再补严一档：构建期黑洞 DB 实测（T10，Next 16.3.5），边界内
+ * 只拿 deadline 不吞拒绝时，拒绝仍被缓存工作单元升为 prerender fatal、杀死
+ * 构建（页面侧 try/catch 封不住）——而 Cache Components 又禁止空
+ * generateStaticParams。出路只能是「永不拒绝」：边界内 catch 归空态。
+ * 代价：空列表会以 hours 档入缓存，DB 恢复后靠 revalidate 自愈（≤1h）；
+ * 发布动作本身会 revalidateTag("posts")，不可用期间也发不了新文，无叠加风险。
  */
 export async function listPublishedPosts(
   locale: string,
@@ -36,27 +38,31 @@ export async function listPublishedPosts(
   "use cache";
   cacheLife("hours");
   cacheTag("posts", `posts:${locale}`);
-  return withDeadline(
-    getDb()
-      .select({
-        slug: posts.slug,
-        title: posts.title,
-        summary: posts.summary,
-        publishedAt: posts.publishedAt,
-        readingTime: posts.readingTime,
-      })
-      .from(posts)
-      .where(
-        and(
-          eq(posts.status, "published"),
-          eq(posts.locale, locale as "zh" | "en"),
-          isNull(posts.deletedAt),
-        ),
-      )
-      .orderBy(desc(posts.publishedAt)),
-    LIST_DEADLINE_MS,
-    "listPublishedPosts",
-  );
+  try {
+    return await withDeadline(
+      getDb()
+        .select({
+          slug: posts.slug,
+          title: posts.title,
+          summary: posts.summary,
+          publishedAt: posts.publishedAt,
+          readingTime: posts.readingTime,
+        })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.status, "published"),
+            eq(posts.locale, locale as "zh" | "en"),
+            isNull(posts.deletedAt),
+          ),
+        )
+        .orderBy(desc(posts.publishedAt)),
+      LIST_DEADLINE_MS,
+      "listPublishedPosts",
+    );
+  } catch {
+    return [];
+  }
 }
 
 /** 单篇详情（含编译产物 HTML + TOC）。仅限已发布；缓存标签 post:<slug>。 */
@@ -91,6 +97,22 @@ export async function searchPosts(
   cacheTag("posts", `search:${locale}`);
   const query = q.trim();
   if (!query) return [];
+  try {
+    return await withDeadline(
+      searchPostsInner(locale, query),
+      LIST_DEADLINE_MS,
+      "searchPosts",
+    );
+  } catch {
+    // 同 listPublishedPosts：边界内化归空态，构建/运行都不得被 DB 拒绝杀死
+    return [];
+  }
+}
+
+async function searchPostsInner(
+  locale: string,
+  query: string,
+): Promise<SearchHit[]> {
   const like = `%${query}%`;
   // 同一个 sql 片段复用于 select/orderBy：drizzle 别名不带 AS，不能按别名排序
   const score = sql<number>`greatest(similarity(${posts.title}, ${query}), similarity(coalesce(${posts.summary}, ''), ${query}))`;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { resolveTheme } from "@/lib/themes/resolve";
 import { lumenTheme } from "@/themes/lumen";
+import { paperTheme } from "@/themes/paper";
+import { terminalTheme } from "@/themes/terminal";
 import { voidTheme } from "@/themes/void";
 
 describe("契约 v2", () => {
@@ -21,6 +23,14 @@ describe("契约 v2", () => {
   it("lumen：renderer=none，仅拉焦", () => {
     expect(lumenTheme.effects.renderer).toBe("none");
     expect(lumenTheme.effects.rift.intensity).toBe(0);
+  });
+  it("genUI 变体派发覆盖全人格：terminal→stitch，paper→clean", () => {
+    // T9 评审批 M：此前只赌 void/lumen 两点，stitch 分支的另一持有者
+    // terminal 与 clean 分支的 paper 从未被点名，变体误改不会被发现
+    expect(terminalTheme.genui.catalogVariant).toBe("stitch");
+    expect(terminalTheme.genui.streamReveal.effect).toBe("tear");
+    expect(paperTheme.genui.catalogVariant).toBe("clean");
+    expect(paperTheme.genui.streamReveal.effect).toBe("fade");
   });
   it("overrides 只认三个旋钮", () => {
     const r = resolveTheme(voidTheme, "dark", {

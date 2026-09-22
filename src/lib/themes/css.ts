@@ -12,8 +12,11 @@ function tokensToDecls(theme: Theme, mode: ThemeMode): string {
   }
   for (const [key, value] of Object.entries(t.shape))
     decls.push(`  --${kebab(key)}: ${value};`);
-  for (const [key, value] of Object.entries(t.elevation))
-    decls.push(`  --${kebab(key)}: ${value};`);
+  for (const [key, value] of Object.entries(t.elevation)) {
+    // T9 评审批 M：color.glow（色值）与 elevation.glow（阴影）曾同导
+    // --glow，后写掩盖前写；阴影侧改名 --shadow-glow，--glow 归 color.glow
+    decls.push(`  --${key === "glow" ? "shadow-glow" : kebab(key)}: ${value};`);
+  }
   for (const [key, value] of Object.entries(t.texture))
     decls.push(`  --${kebab(key)}: ${value};`);
   decls.push(`  --space-unit: ${t.space.unit}px;`);
