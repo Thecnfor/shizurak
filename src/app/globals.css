@@ -267,6 +267,23 @@ html.rift-t2::view-transition-new(root) {
   animation: hero-reveal 300ms var(--ease-rift) both;
 }
 
+/* ── GenUI tear 显现（spec §4：streamReveal.effect=tear 的一次性撕开）──
+   水平左→右 clip-path 揭开（与 rift-new 同向的直角wipe，无几何变换）；
+   80ms 预算压在内容显现级（远小于 T1 的 300ms，不抢路由转场），easing 走
+   --ease-rift 令牌；both 锁尾帧免闪回，挂载即跑一次 = once-per-render。
+   reduced-motion → 文件尾统一静态化。 */
+@keyframes genui-tear {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.genui-tear {
+  animation: genui-tear 80ms var(--ease-rift) both;
+}
+
 /* ── 信纸排印（spec §1.2/§1.3，拒绝清单：列表不是卡片）──
    mono micro 元信息：字号/行高/字距全部取主题令牌（幕人格 0.75rem/0.2em） */
 .mono-micro {
@@ -440,6 +457,10 @@ html.rift-t2::view-transition-new(root) {
   }
   /* hero 自撕同样静态化（spec §2.2 铁律 5：reduced 下不进转场动画） */
   .hero-title {
+    animation: none;
+  }
+  /* GenUI tear 显现同步静态化（与 hero 同一条 clip-path 动画红线） */
+  .genui-tear {
     animation: none;
   }
   /* 一键静态化所有 ViewTransition（定位/缩放清零，保留必要 opacity） */
