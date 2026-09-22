@@ -19,7 +19,20 @@ export function getDb(): Db {
   if (!g.__shizurakDb) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL 未配置");
-    g.__shizurakPg ??= postgres(url, { max: 5, prepare: false });
+    // 驱动层封顶（I-1 的第一道防线，单位见 postgres.js README）：
+    // - connect_timeout: 2 秒——TCP 黑洞（DB 宿主机不可达）不再拖满 ≈11s  SYN 超时；
+    // - connection.statement_timeout: 2000ms——经启动包 GUC 下发，服务端杀掉
+    //   慢查（postgres.js 无同名选项，任意 runtime 配置项都可经 connection 透传）；
+    // - idle_timeout: 20 秒——悬挂的废连接及早回收，不占 max:5 的池位。
+    // 查询级硬保证仍在 lib/db/queries/posts.ts 的边界内 withDeadline（驱动盖不到
+    // 排队/协议层卡死等路径），两层合起来把 DB 故障封在 3s 内。
+    g.__shizurakPg ??= postgres(url, {
+      max: 5,
+      prepare: false,
+      connect_timeout: 2,
+      idle_timeout: 20,
+      connection: { statement_timeout: 2000 },
+    });
     g.__shizurakDb = drizzle(g.__shizurakPg, { schema });
   }
   return g.__shizurakDb;

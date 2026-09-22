@@ -5,13 +5,8 @@ import Link from "next/link";
  * hairline 分隔 + 上下大留白；视觉在 globals.css 的 .paper-row/.mono-micro）。
  * 首页幕②那条点名 T2 崩解的行是客户端 signal-row.tsx，只有链接语法不同；
  * 列表/项目/关于页的导航不设点名 → 走 T1 主语法，无需客户端组件。
+ * 日期/元信息的口径住在 lib/utils（fmtDate/postMeta），这里只管排印。
  */
-
-/** ISO 日期（无时区戏法：取 UTC 前 10 位，与旧列表页口径一致） */
-export function fmtDate(d: Date | null): string {
-  if (!d) return "";
-  return new Date(d).toISOString().slice(0, 10);
-}
 
 export function PaperRow({
   href,

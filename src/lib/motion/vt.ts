@@ -53,8 +53,9 @@ type RiftTransitionArg =
       types?: Iterable<string> | null;
     });
 
-/** 取 options 里的 types（数组/Set 归一化成 string[]；无则空数组） */
-function readTypes(arg: RiftTransitionArg): string[] {
+/** 取 options 里的 types（数组/Set 归一化成 string[]；无参数/无 types 则空数组） */
+function readTypes(arg: RiftTransitionArg | undefined): string[] {
+  if (!arg || typeof arg === "function") return [];
   const types = (arg as { types?: unknown }).types;
   if (Array.isArray(types)) return types.map(String);
   if (
@@ -300,7 +301,15 @@ export function installRiftTransitionDriver(
     }
     let transition: ViewTransition;
     try {
-      transition = native.call(this, arg);
+      // DOM 库把 options.types 窄写成 string[]，而我们吃任意 Iterable（Next 传 Set）；
+      // 运行时两者兼容，断言只桥接类型层的口径差，不改行为。
+      transition = native.call(
+        this,
+        arg as
+          | ViewTransitionUpdateCallback
+          | StartViewTransitionOptions
+          | undefined,
+      );
     } catch (err) {
       if (grammar) release(grammar);
       throw err;

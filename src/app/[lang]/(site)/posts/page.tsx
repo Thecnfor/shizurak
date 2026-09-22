@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { RouteTransition } from "@/components/fx/route-transition";
 import { listPublishedPosts } from "@/lib/db/queries/posts";
-import { withDeadline } from "@/lib/utils";
+import { postMeta } from "@/lib/utils";
 import { getDictionary } from "../../dictionaries";
-import { fmtDate, PaperRow, PaperRowsSkeleton } from "../paper-row";
+import { PaperRow, PaperRowsSkeleton } from "../paper-row";
 
 /**
  * 文章列表（spec §4：信纸排印 + display 一句话导语，同首页密度）。
@@ -48,8 +48,9 @@ async function PostList({
 }) {
   let items: Awaited<ReturnType<typeof listPublishedPosts>> = [];
   try {
-    // 与首页幕②同口径：3s 期限，不可达/超期按空态定稿，不押住文档收尾
-    items = await withDeadline(listPublishedPosts(lang), 3_000, "posts");
+    // 与首页幕②同口径：墙钟期限已内化进 listPublishedPosts 的 cache 边界（I-1），
+    // 页面只剩 try/catch——不可达/超期按空态定稿，不押住文档收尾
+    items = await listPublishedPosts(lang);
   } catch {
     // DB 不可达：按空态呈现，不甩错误
     items = [];
@@ -65,7 +66,7 @@ async function PostList({
             key={p.slug}
             href={`/${lang}/posts/${p.slug}`}
             title={p.title}
-            meta={`${fmtDate(p.publishedAt)} · ${p.readingTime ?? 1} min`}
+            meta={postMeta(p)}
           />
         ))}
       </ul>

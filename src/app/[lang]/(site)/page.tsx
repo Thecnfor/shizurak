@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { RouteTransition } from "@/components/fx/route-transition";
 import { listPublishedPosts } from "@/lib/db/queries/posts";
-import { withDeadline } from "@/lib/utils";
+import { postMeta } from "@/lib/utils";
 import { getDictionary } from "../dictionaries";
 import { Hero } from "./hero";
-import { fmtDate, PaperRowsSkeleton } from "./paper-row";
+import { PaperRowsSkeleton } from "./paper-row";
 import { SignalRow } from "./signal-row";
 
 /**
@@ -62,15 +62,14 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
 
 /** 最近 5 篇已发布文章（PostSummary：slug/title/publishedAt/readingTime；
  *  summary 留给列表页，AI 参与度字段尚不在查询形状里——不虚构，省略）。
- *  取数失败/为空/超期都回落骨架行：这一幕永不报错（E2E 断言 rows-or-skeleton）。
- *  3s 期限：DB 不可达时失败回要 ≈11s，会把流式文档的收尾押住同样长度，
- *  并行 e2e 下直接击穿导航超时——超期即按骨架定稿，慢查询后台自生自灭。 */
+ *  取数失败/为空都回落骨架行：这一幕永不报错（E2E 断言 rows-or-skeleton）。
+ *  墙钟期限不在这里——已内化进 listPublishedPosts 的 cache 边界（I-1：
+ *  页面层 race 只丢看得见的等待，边界内的 promise 仍会后台挂到 ≈11s，
+ *  Next 会报 "stuck on shared state from the outer render scope"）；超期即按骨架定稿。 */
 async function Signals({ lang }: { lang: string }) {
   let rows: Awaited<ReturnType<typeof listPublishedPosts>> = [];
   try {
-    rows = (
-      await withDeadline(listPublishedPosts(lang), 3_000, "signals")
-    ).slice(0, 5);
+    rows = (await listPublishedPosts(lang)).slice(0, 5);
   } catch {
     rows = [];
   }
@@ -82,7 +81,7 @@ async function Signals({ lang }: { lang: string }) {
           key={p.slug}
           href={`/${lang}/posts/${p.slug}`}
           title={p.title}
-          meta={`${fmtDate(p.publishedAt)} · ${p.readingTime ?? 1} min`}
+          meta={postMeta(p)}
         />
       ))}
     </ul>

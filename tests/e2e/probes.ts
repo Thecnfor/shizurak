@@ -267,12 +267,14 @@ export function watchAttributeLifecycle(
  * 延迟边界「startup tear」沉降等待：首页幕②/posts 的 <Suspense> 定稿时，
  * React 19 会把 deferred-value commit 包进一次**无点名的 options 形态**
  * startViewTransition——对 director 的形态判定（isRouteTransitionCall）来说，
- * 它和真路由过渡不可区分 → 照常挂 rift-t1。DB 不可达 + withDeadline(3s) 把
- * 这一撕压到 goto 后 ≈3.4s，正好落进各用例 ≤4s 的探针窗口；高并行下落地还会
+ * 它和真路由过渡不可区分 → 照常挂 rift-t1。DB 不可达时定稿墙钟由两层封住：
+ * 驱动层 connect/statement 封顶 + 边界内 withDeadline(3s)（I-1 定案，见
+ * lib/db/queries/posts.ts），这一撕压在 goto 后 ≤3.4s（实测黑洞场景 ≈2.7s），
+ * 正好落进各用例 ≤4s 的探针窗口；高并行下落地还会
  * 再漂——固定 sleep 盖不住（实测 4.5s 静置后仍撞车），故主动轮询 [data-home]
  * 里的骨架标记：data-skeleton 消失 ⇔ 边界已定稿 ⇔ startup tear 已开过；
  * 再补 400ms 让 tear 窗口（≤300ms + 调度）走完。DB 可达时定稿秒级，不多等；
- * 骨架永不消失的降级态由超时兑住（5s 上限 ≈ withDeadline 回落地 + 余量）。
+ * 骨架永不消失的降级态由超时兑住（5s 上限 ≈ 边界定稿封顶 + 余量）。
  * 语法侧「路由过渡才算导航」是契约形态本身，不该为测试破例；测试侧装探针前
  * 必须先过这一沉降。调 withDeadline 须同步调这里的超时。
  */

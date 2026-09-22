@@ -262,7 +262,9 @@ describe("installRiftTransitionDriver（挂载/还原/类生命周期）", () =>
     });
     const uninstall = installRiftTransitionDriver(() => snapshot());
     try {
-      document.startViewTransition({
+      // DOM 库类型只认 string[]，而驱动的真实入口吃任意 Iterable（Next 实测传 Set）：
+      // 用宽松签名调用，不在测试里把 Set 伪装成数组
+      (document.startViewTransition as (arg: unknown) => ViewTransition)({
         update,
         types: new Set(["rift-collapse"]),
       });
