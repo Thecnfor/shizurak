@@ -48,7 +48,7 @@ export function AgentDock({ labels }: { labels: Labels }) {
         onClick={toggle}
         aria-label={labels.open}
         aria-expanded={agentDock.open}
-        className="flex size-12 items-center justify-center rounded-full border border-border-strong bg-bg-elevated text-accent shadow-[var(--glow)] transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring-color)]"
+        className="flex size-12 items-center justify-center rounded-full border border-border-strong bg-bg-elevated text-accent shadow-[var(--shadow-glow)] transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring-color)]"
       >
         <MessagesSquare className="size-5" />
       </button>
