@@ -35,6 +35,9 @@ test("/zh（非 low 档）settle 后无白名单外的运行中 CSS 动画", asy
   if (hasCssFallbackCanvas) allowed.add("rift-breath");
 
   expect(running.filter((n) => !allowed.has(n))).toEqual([]);
+  // 反空洞断言：hum-tremor（nav/footer 的 .hum-tremor，5s steps(1) infinite）必须
+  // 真被采集到 running；若因选择器/联动改动漏采，running 为空会让上条 vacuous 绿
+  expect(running).toContain("hum-tremor");
   // 非 low 档走 GL 路径：CSS 呼吸底噪不得出现
   expect(running).not.toContain("rift-breath");
 });

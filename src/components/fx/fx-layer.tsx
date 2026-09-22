@@ -12,9 +12,9 @@ export function FxLayer() {
   const effects = useThemeStore((s) => s.resolved.effects);
   const tier = useFxTier();
   const reduced = usePrefersReducedMotion();
-  // hydration 门禁（T9 评审批 I，同 agent-dock 模式）：SSR 首帧无条件渲染
-  // data-fx=fallback，而客户端首帧可能因 reduced/存储恢复而返回 null，
-  // 两边不一致即水合警告。挂载前统一渲染 null，挂载后再进入真实分支。
+  // hydration 门禁（T9 评审批 I，同 agent-dock 模式）：SSR 首帧与客户端挂载前
+  // 一致渲染 null（旧版 SSR 无条件渲染 data-fx=fallback、客户端可能返回
+  // null 的水合警告已随此口径消失），挂载后再进入真实分支。
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const [Background, setBackground] = useState<ComponentType<FxProps> | null>(

@@ -61,6 +61,8 @@
   },
   "agentDock": {
     "open": "AI concierge",
+    "close": "Close",
+    "send": "Send",
     "title": "AI concierge",
     "placeholder": "Ask me anything about this site…",
     "soon": "Visitor agent arrives in M2",

@@ -30,6 +30,8 @@ export default async function SiteLayout({
           <AgentDock
             labels={{
               open: dict.agentDock.open,
+              close: dict.agentDock.close,
+              send: dict.agentDock.send,
               title: dict.agentDock.title,
               placeholder: dict.agentDock.placeholder,
               dock: dict.agentDock.dock,

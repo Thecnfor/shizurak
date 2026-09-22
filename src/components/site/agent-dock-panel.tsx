@@ -191,7 +191,7 @@ export default function DockPanel({ labels }: { labels: Labels }) {
             </button>
             <button
               type="button"
-              aria-label={labels.open}
+              aria-label={labels.close}
               onClick={toggle}
               className="flex size-7 items-center justify-center rounded-sm text-ink-muted hover:text-ink"
             >
@@ -265,7 +265,7 @@ export default function DockPanel({ labels }: { labels: Labels }) {
           />
           <button
             type="submit"
-            aria-label={labels.open}
+            aria-label={labels.send}
             disabled={busy || !input.trim()}
             className="flex size-9 items-center justify-center rounded-sm border border-border-strong bg-bg-elevated text-accent disabled:opacity-40"
           >

@@ -7,6 +7,8 @@ import { useUIShellStore } from "@/stores/ui-shell-store";
 
 export type Labels = {
   open: string;
+  close: string;
+  send: string;
   title: string;
   placeholder: string;
   dock: string;

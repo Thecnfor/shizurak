@@ -18,6 +18,20 @@ unit:
   stage: verify
   script: [pnpm exec vitest run]
 
+theme-check:
+  stage: verify
+  script: [pnpm theme:check]
+
+# 预算门禁接线（计划「T10 二审批②」后续项落地）：size 暂 allow_failure——
+# 首页 first-load 341.4KB vs 预算 170KB 是已记录的预算偏差（见计划补记
+# 「首页 first-load 预算偏差」），红线保留 exit 1 供 CI 披露，预算重新谈判后去掉本行。
+size-check:
+  stage: verify
+  allow_failure: true
+  script:
+    - pnpm build # 走 prebuild 生成 theme-vars.generated.css（git-ignored）
+    - node scripts/size-check.mjs
+
 e2e:
   stage: verify
   image: mcr.microsoft.com/playwright:v1.63.0-noble

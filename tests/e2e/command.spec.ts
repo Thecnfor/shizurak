@@ -23,9 +23,12 @@ test("导航命令跳转", async ({ page }) => {
   await expect(page.locator("[data-command-ready]")).toBeAttached();
   await settleDeferredBoundaries(page);
   await page.keyboard.press("ControlOrMeta+k");
+  // 面板真可见再敲字：负载下 cmdk 挂载/聚焦有延迟，不等会丢键→过滤空→Enter 无操作
+  await expect(page.getByPlaceholder("搜索或输入命令…")).toBeVisible();
   await page.keyboard.type("项目");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/zh\/projects$/);
+  // 10s 口径同 fx/smoke：/zh/projects 在 dev 下冷编译可达 5s，全量并跑时默认 5s 会误爆
+  await expect(page).toHaveURL(/\/zh\/projects$/, { timeout: 10_000 });
 });
 
 /**
@@ -41,11 +44,15 @@ test("导航命令跳转也吃 T1 撕幕（driver 覆盖 router.push）", async 
   // 先沉降再装探针：否则 startup tear（边界定稿的无点名 VT）会被误读成
   // “跳转也吃了 T1”的正向证据
   await settleDeferredBoundaries(page);
-  const seen = watchClassAppear(page, "rift-tear");
+  // 窗口从装探针起算，覆盖「等面板可见+输入+提交」全程：负载下 dev 提交可超 6s，
+  // 正例不该因基础设施延时假失败（命中即 resolve，宽窗零成本）
+  const seen = watchClassAppear(page, "rift-tear", 15_000);
   await page.keyboard.press("ControlOrMeta+k");
+  // 同上：面板可见再敲字（另装探针在前不矛盾——rift-tear 只在 Enter 导航后才可能挂类）
+  await expect(page.getByPlaceholder("搜索或输入命令…")).toBeVisible();
   await page.keyboard.type("项目");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/zh\/projects$/);
+  await expect(page).toHaveURL(/\/zh\/projects$/, { timeout: 10_000 });
   expect(await seen).toBe(true);
 });
 

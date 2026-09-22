@@ -61,6 +61,8 @@
   },
   "agentDock": {
     "open": "AI 导览",
+    "close": "关闭",
+    "send": "发送",
     "title": "AI 导览",
     "placeholder": "问我关于本站的任何事…",
     "soon": "访客 Agent 将于 M2 接入",
