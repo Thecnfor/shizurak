@@ -26,7 +26,7 @@ export default async function LabPage({ params }: PageProps<"/[lang]/lab">) {
               <h2 className="font-mono text-xs uppercase tracking-widest text-ink-muted">
                 {dict.lab.sharedTitle}
               </h2>
-              <p className="mt-3 text-sm text-ink-faint" aria-busy="true">
+              <p className="mt-3 text-sm text-ink-muted" aria-busy="true">
                 …
               </p>
             </section>
@@ -66,7 +66,7 @@ async function SharedSection({
         {title}
       </h2>
       {shared.length === 0 ? (
-        <p className="mt-3 text-sm text-ink-faint">{empty}</p>
+        <p className="mt-3 text-sm text-ink-muted">{empty}</p>
       ) : (
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {shared.map((s) => (

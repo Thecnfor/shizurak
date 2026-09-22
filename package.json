@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "theme:check": "tsx scripts/theme-check.ts",
+    "size:check": "node scripts/size-check.mjs",
     "verify": "pnpm lint && pnpm test && pnpm theme:check"
   },
   "dependencies": {

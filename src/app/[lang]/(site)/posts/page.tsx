@@ -56,7 +56,7 @@ async function PostList({
     items = [];
   }
   if (items.length === 0) {
-    return <p className="mono-micro text-ink-faint">{empty}</p>;
+    return <p className="mono-micro text-ink-muted">{empty}</p>;
   }
   return (
     <section aria-label={headline}>

@@ -18,10 +18,10 @@ async function Results({
   const dict = await getDictionary();
   const query = (await q).q?.trim() ?? "";
   if (!query)
-    return <p className="mt-8 text-sm text-ink-faint">{dict.search.hint}</p>;
+    return <p className="mt-8 text-sm text-ink-muted">{dict.search.hint}</p>;
   const hits = await searchPosts(lang, query).catch(() => []);
   if (hits.length === 0)
-    return <p className="mt-8 text-sm text-ink-faint">{dict.search.empty}</p>;
+    return <p className="mt-8 text-sm text-ink-muted">{dict.search.empty}</p>;
   return (
     <ul className="mt-8 space-y-4">
       {hits.map((p) => (

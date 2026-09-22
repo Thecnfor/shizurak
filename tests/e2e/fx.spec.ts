@@ -73,4 +73,27 @@ test.describe("reduced-motion", () => {
     // 底噪四项全关：幕环也不得挂载
     await expect(page.locator("[data-cursor-ring]")).toHaveCount(0);
   });
+
+  test("T10-C：零 WebGL 模块请求 + 路由导航 ≤800ms", async ({ page }) => {
+    // 网络口径断言：reduced 下 rift 动态 chunk（含 OGL）根本不应被请求
+    const riftReqs: string[] = [];
+    await page.route("**/*", (route) => {
+      const u = route.request().url();
+      if (/lib\/gl\/rift|gl%2Frift|ogl/i.test(u)) riftReqs.push(u);
+      return route.continue();
+    });
+    await page.goto("/zh?fxtier=high");
+    // 口径：量的是稳态路由切换——首次客户端导航含路由 chunk 装载/dev 按需编译，
+    // 先来回走一遍把它排除（与 prod 预缓存后的用户体感同口径）
+    await page.getByRole("link", { name: "项目" }).click();
+    await expect(page).toHaveURL(/\/zh\/projects$/, { timeout: 10_000 });
+    await page.getByRole("link", { name: "SHIZURAK" }).click();
+    await expect(page).toHaveURL(/\/zh$/, { timeout: 10_000 });
+    await page.waitForTimeout(800); // 让 prefetch 飞包落地再取稳态窗
+    const t0 = Date.now();
+    await page.getByRole("link", { name: "项目" }).click();
+    await expect(page).toHaveURL(/\/zh\/projects$/, { timeout: 3000 });
+    expect(Date.now() - t0).toBeLessThan(800);
+    expect(riftReqs).toEqual([]);
+  });
 });
