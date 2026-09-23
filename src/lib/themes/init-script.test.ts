@@ -57,4 +57,39 @@ describe("THEME_INIT_SCRIPT", () => {
     runScript();
     expect(document.documentElement.getAttribute("data-theme")).toBe("paper");
   });
+
+  // —— URL ?theme= 优先档（perf 审计 2026-09-23：分享链首帧前预写，治水合 CLS）——
+
+  it("URL ?theme= 命中白名单时优先于 localStorage", () => {
+    localStorage.setItem(
+      "shizurak:theme",
+      JSON.stringify({ themeId: "void", overrides: {} }),
+    );
+    window.history.replaceState({}, "", "/zh?theme=lumen");
+    runScript();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("lumen");
+  });
+
+  it("URL ?theme= 白名单外 id 被忽略，回落 localStorage", () => {
+    localStorage.setItem(
+      "shizurak:theme",
+      JSON.stringify({ themeId: "paper", overrides: {} }),
+    );
+    window.history.replaceState({}, "", "/zh?theme=evil");
+    runScript();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("paper");
+  });
+
+  it("URL ?theme= 无 localStorage 时也能单独生效；无参数页不受影响", () => {
+    window.history.replaceState({}, "", "/zh?theme=terminal");
+    runScript();
+    expect(document.documentElement.getAttribute("data-theme")).toBe(
+      "terminal",
+    );
+    // 无 theme 参数的普通链保持不写属性（无存储时）
+    document.documentElement.removeAttribute("data-theme");
+    window.history.replaceState({}, "", "/zh");
+    runScript();
+    expect(document.documentElement.getAttribute("data-theme")).toBeNull();
+  });
 });

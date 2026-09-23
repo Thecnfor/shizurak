@@ -32,14 +32,19 @@ export function PaperRow({
 }
 
 /** 骨架信纸行：Suspense fallback 与「无内容/DB 不可达」共用同一形态
- *  （诚实占位、永不报错；e2e 的 rows-or-skeleton 断言锚在 data-paper-row） */
+ *  （诚实占位、永不报错；e2e 的 rows-or-skeleton 断言锚在 data-paper-row）。
+ *  行高与真行逐项对齐（perf 审计 2026-09-23：骨架→内容替换的 CLS 源头是行高差）：
+ *  标题行的 leading-snug 必须与 PaperRow/SignalRow 的 h3 同抄——span 不继承 h3
+ *   UA 行盒，差 ~1.4px/行×5 行；字号/mono-micro 两侧本就同源。
+ *  已知不可锁项：真行标题可折行（两行标题比一行骨架高），列表长度 N≠骨架数——
+ *  那是内容语义变化，不是形态错位，不在此治。 */
 export function PaperRowsSkeleton({ count = 5 }: { count?: number }) {
   return (
     <ul aria-busy="true">
       {Array.from({ length: count }, (_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: 骨架行无身份也无状态，位置就是键
         <li key={i} data-paper-row data-skeleton="true" className="paper-row">
-          <span className="paper-row-title text-[1.05rem]">…</span>
+          <span className="paper-row-title text-[1.05rem] leading-snug">…</span>
           <span className="mono-micro tabular-nums">…</span>
         </li>
       ))}
