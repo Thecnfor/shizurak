@@ -11,13 +11,13 @@ async function boot() {
 }
 
 describe("前端 DSH-Cordis 内核", () => {
-  it("拓扑启动 + Service 就绪 + 默认主题 variant=hud", async () => {
+  it("拓扑启动 + Service 就绪 + 默认主题 variant=stitch", async () => {
     const k = await boot();
     for (const id of ["actions", "pageContext", "themeBridge", "genui"]) {
       expect(k.context.has(id), id).toBe(true);
     }
     expect(k.context.require<{ variant(): string }>("genui").variant()).toBe(
-      "hud",
+      "stitch",
     );
     await k.stop();
   });

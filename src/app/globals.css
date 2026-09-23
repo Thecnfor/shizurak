@@ -27,13 +27,6 @@
   --radius-lg: var(--radius-lg);
 }
 
-/* 个性化色相旋转：注册为 <angle> → 色相变化本身可 transition 动画（设计规范 §1.5） */
-@property --hue-rotate {
-  syntax: "<angle>";
-  inherits: true;
-  initial-value: 0deg;
-}
-
 html {
   color-scheme: dark light;
   scroll-behavior: smooth;
@@ -41,7 +34,6 @@ html {
 
 /* 浮层派生令牌（设计规范 §11）：跨主题一致的阴影/焦点环 */
 :root {
-  --hue-rotate: 0deg;
   --overlay-shadow: var(--shadow-md);
   --focus-ring-color: var(--accent);
 }
@@ -70,8 +62,8 @@ h3 {
 ::view-transition {
   pointer-events: none; /* 转场期间不吞点击 */
 }
-/* 星空特效层跨页持续：背景不动、内容变 */
-[data-fx="starfield"],
+/* 幕层（rift canvas）跨页持续：幕不断，幕面换（spec §2.2 铁律 4） */
+[data-rift],
 [data-fx="fallback"] {
   view-transition-name: fx-root;
 }
@@ -83,42 +75,256 @@ h3 {
   display: none;
 }
 
-/* 方向性导航（<Link transitionTypes>） */
-::view-transition-old(.nav-forward) {
-  animation: vt-out-left 320ms ease-in-out both;
+/* lite 档幕面呼吸（无 WebGL 时的 CSS 兜底，Task 4 在此基础上补全底噪） */
+@keyframes rift-breath {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.015);
+  }
 }
-::view-transition-new(.nav-forward) {
-  animation: vt-in-right 320ms ease-in-out both;
+
+/* ── 底噪四项（spec §2.1 G3）：micro 微颤 + 幕环光标 ──
+   --ease-entrance / --ease-rift 由 theme-vars.generated.css 从各人格 motion.easing
+   直出（旧 `:root` 手工镜像与它的「改 void 曲线时同步这里」义务注释已删：
+   曲线只有一处源头——主题数据；非幕人格拿到自己的曲线而非 void 的副本） */
+/* 0.2Hz 偶发 1px 位移；错相靠 --tremor-delay，禁止同步抖动 */
+@keyframes hum-tremor {
+  0%,
+  96%,
+  100% {
+    transform: none;
+  }
+  97%,
+  99% {
+    transform: translate(0, 1px);
+  }
 }
-::view-transition-old(.nav-back) {
-  animation: vt-out-right 320ms ease-in-out both;
+.hum-tremor {
+  animation: hum-tremor 5s steps(1) infinite;
+  animation-delay: var(--tremor-delay, 0s);
 }
-::view-transition-new(.nav-back) {
-  animation: vt-in-left 320ms ease-in-out both;
+/* hum 关闭联动：tremor===0 或 reduced 时 HumGate 给 <html> 挂 .hum-off。
+   nav/footer 是服务端组件读不到 store， tremor 类常渲染，关闭只能走这条 CSS 联动 */
+.hum-off .hum-tremor {
+  animation: none;
 }
-@keyframes vt-out-left {
+/* 幕环光标：位置由 JS 写 translate 属性，CSS 只管 transform: scale（两通道不碰撞） */
+.cursor-ring {
+  position: fixed;
+  z-index: 100;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: difference;
+  transition:
+    transform 0.18s var(--ease-entrance),
+    border-color 0.18s var(--ease-entrance);
+}
+.cursor-ring[data-hot="true"] {
+  transform: scale(2.1);
+  border-color: var(--warning);
+}
+/* 触屏无光标：coarse 下强制隐藏（正例靠 pointer:fine，反例靠这条） */
+@media (pointer: coarse) {
+  .cursor-ring {
+    display: none;
+  }
+}
+
+/* ── T3 镜头拉焦（spec §2.2 / §4 ⌘K：整屏失焦 → 扫描线 → 锁焦 ≤350ms）──
+   载体是遮罩层（[data-focus-pull] = cmdk overlay，fixed inset-0 z-50、DOM 序在面板之前）：
+   失焦走 backdrop-filter → 身后整屏糊掉而面板本体保持锐利；::after 因此天然压在
+   页面内容之上、⌘K 面板之下，无需 z-index 杂技（光标环 z-100 仍在最上）。
+   --fp-blur / --fp-y 由 src/lib/motion/focus.ts 的 GSAP 时间线逐帧写入（时长/easing 取
+   theme.motion token）；故意不注册 @property：注册成 inherits:false 会断掉向 ::after 的继承。 */
+[data-focus-pull] {
+  backdrop-filter: blur(var(--fp-blur, 0px));
+}
+[data-focus-pull]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* 一条横向光带自顶掠过：band 高 26%，靠 background-position 百分比在盒内上下扫，
+     不溢出、不需 overflow:hidden。针脚冰蓝直接消费 --accent（旧版此处因 hue-rotate
+     钩子把 accent 整链打成 IACVT 才临时取 --ink，钩子删除后已恢复可用）。 */
+  background-image: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in oklab, var(--accent) 45%, transparent),
+    transparent
+  );
+  background-size: 100% 26%;
+  background-repeat: no-repeat;
+  background-position: 0 var(--fp-y, 0%);
+}
+
+/* ── T1 定格撕幕（spec §2.2 主语法）：对角硬边撕裂——旧幕半幅坠出（位移+微旋），
+   新幕合拢；300ms 封顶（§7 预算）。rift-tear 类与 window.__rift 的 setTear/setShift
+   由 RiftDirector 包装 document.startViewTransition 在这一段同窗驱动（缝光同步）。
+   门控架构：正向语法类。RiftDirector 在 native startViewTransition **调用之前**同步
+   挂 html.rift-t1（root 伪元素树建立时就查 animation-name，晚挂来不及），
+   finished 即摘。于是：
+   · 路由过渡且 types 未点名任何 rift-* 且 rift 烈度 > 0 且非 reduced → rift-t1 → 本块撕幕；
+     （点名 rift-collapse 的走下面 T2 块）；
+   · 换肤 morph（回调形态）/ intensity===0 人格（lumen、paper）/ reduced → 不挂类
+     → 本块不参与 → UA 默认交叉淡入。旧 html:not(.theme-morph) 负向门控随此退役。
+   单语法铁律（spec §2.2 铁律 3：一次转场只用 T1/T2/T3 之一）：root 伪元素的 animation-name
+   只由已挂上的语法类供给，不挂类则无自定义动画。 */
+html.rift-t1::view-transition-old(root),
+html.rift-t1::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: var(--ease-rift);
+  mix-blend-mode: normal;
+}
+html.rift-t1::view-transition-old(root) {
+  animation-name: rift-old;
+}
+html.rift-t1::view-transition-new(root) {
+  animation-name: rift-new;
+}
+@keyframes rift-old {
   to {
-    opacity: 0;
-    translate: -48px 0;
+    clip-path: polygon(110% 0, 110% 0, 110% 110%, 110% 110%);
+    transform: translate(6%, -3%) rotate(1.2deg);
+    filter: brightness(0.4);
   }
 }
-@keyframes vt-in-right {
+@keyframes rift-new {
   from {
-    opacity: 0;
-    translate: 48px 0;
+    clip-path: polygon(-10% 0, -10% 0, -10% 110%, -10% 110%);
+    transform: translate(-4%, 2%);
   }
-}
-@keyframes vt-out-right {
   to {
-    opacity: 0;
-    translate: 48px 0;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    transform: none;
   }
 }
-@keyframes vt-in-left {
-  from {
-    opacity: 0;
-    translate: -48px 0;
+
+/* ── T2 信号崩解（spec §2.2：400–600ms，块状崩解→聚合；触发点仅 首页→文章 与
+   任意页→Lab）：与 T1 同一条正向门控——RiftDirector 在 native startViewTransition
+   前按 transitionTypes 点名（rift-collapse）同步挂 html.rift-t2，finished 即摘。
+   一次转场只拿到 rift-t1 或 rift-t2 之一（铁律 3），所以两块选择器天生互斥。
+   时长走 --rift-t2-duration：导演写入 min(600, motion.duration.section)，与它自己
+   那条 uCollapse 时间线同源；var 默认值 600ms 只在导演未就位时兜底。
+   内容切换藏在崩解之下：旧幕 opacity 至 55% 归零并保持隐去，新幕 0 压到 45% 再起，
+   两段交叠的正中就是 shader 里碎屑吞屏最盛的窗口（峰值同点 45%）。 */
+html.rift-t2::view-transition-old(root),
+html.rift-t2::view-transition-new(root) {
+  animation-duration: var(--rift-t2-duration, 600ms);
+  animation-timing-function: var(--ease-rift);
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+html.rift-t2::view-transition-old(root) {
+  animation-name: rift-collapse-old;
+}
+html.rift-t2::view-transition-new(root) {
+  animation-name: rift-collapse-new;
+}
+@keyframes rift-collapse-old {
+  0% {
+    opacity: 1;
   }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes rift-collapse-new {
+  0%,
+  45% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ── 首页 hero 自撕（spec §4 首页①：进站唯一一次 T1 自撕显现）──
+   几何与 rift-new 同源（对角 clip-path  wiped-in + translate(-4%,2%)→none）：rift-new
+   绑在 ::view-transition 伪元素上且 e2e 要按独立动画名断言，故不复用同名 keyframe
+   而是同名另定义一份——改动 rift-new 几何时必须同步这里（两域不能共享声明）。
+   300ms = T1 预算（§7 红线）；时长/easing 全走 CSS 令牌，零 JS（CSS 动画挂载即
+   跑一次，天然 once-per-page-load）。reduced-motion → 文件尾统一静态化。 */
+@keyframes hero-reveal {
+  from {
+    clip-path: polygon(-10% 0, -10% 0, -10% 110%, -10% 110%);
+    transform: translate(-4%, 2%);
+  }
+  to {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    transform: none;
+  }
+}
+.hero-title {
+  animation: hero-reveal 300ms var(--ease-rift) both;
+}
+
+/* ── GenUI tear 显现（spec §4：streamReveal.effect=tear 的一次性撕开）──
+   水平左→右 clip-path 揭开（与 rift-new 同向的直角wipe，无几何变换）；
+   80ms 预算压在内容显现级（远小于 T1 的 300ms，不抢路由转场），easing 走
+   --ease-rift 令牌；both 锁尾帧免闪回，挂载即跑一次 = once-per-render。
+   reduced-motion → 文件尾统一静态化。 */
+@keyframes genui-tear {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.genui-tear {
+  animation: genui-tear 80ms var(--ease-rift) both;
+}
+
+/* ── 信纸排印（spec §1.2/§1.3，拒绝清单：列表不是卡片）──
+   mono micro 元信息：字号/行高/字距全部取主题令牌（幕人格 0.75rem/0.2em） */
+.mono-micro {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro-size);
+  line-height: var(--text-micro-lh);
+  letter-spacing: var(--text-micro-tracking);
+  text-transform: uppercase;
+  font-weight: var(--text-micro-weight);
+}
+/* 信纸行：hairline 分隔 + 上下大留白，整行就是一个链接（.paper-row 挂在 Link 上）。
+   hover 唯一动静：左缘 ≤4px 针脚渐显 + 标题转 full ink（拒绝清单：无大幅位移/缩放，
+   且背景渐变不构成唯一状态提示——标题颜色同步变化） */
+.paper-row {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-block: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.paper-row::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-entrance);
+}
+.paper-row:hover::before {
+  opacity: 0.35;
+}
+.paper-row .paper-row-title {
+  color: var(--ink-secondary);
+  transition: color 0.2s var(--ease-entrance);
+}
+.paper-row:hover .paper-row-title {
+  color: var(--ink);
 }
 
 /* CSS 原生滚动进度条（零 JS，lumen 承诺）：加 .scroll-progress 即可用 */
@@ -245,11 +451,23 @@ h3 {
   body {
     transition: none;
   }
+  /* 底噪四项全关（SSR/未水合也成立；水合后由 HumGate 挂 .hum-off 双保险） */
+  .hum-tremor {
+    animation: none;
+  }
+  /* hero 自撕同样静态化（spec §2.2 铁律 5：reduced 下不进转场动画） */
+  .hero-title {
+    animation: none;
+  }
+  /* GenUI tear 显现同步静态化（与 hero 同一条 clip-path 动画红线） */
+  .genui-tear {
+    animation: none;
+  }
   /* 一键静态化所有 ViewTransition（定位/缩放清零，保留必要 opacity） */
   ::view-transition-old(*),
   ::view-transition-new(*),
   ::view-transition-group(*) {
-    /* biome-ignore lint/complexity/noImportantStyles: reduced-motion 需以 !important 覆盖 .nav-* 具类动画（官方 View Transitions 配方） */
+    /* biome-ignore lint/complexity/noImportantStyles: reduced-motion 需以 !important 覆盖 root 具名动画（官方 View Transitions 配方） */
     animation: none !important;
   }
 }

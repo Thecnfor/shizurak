@@ -12,14 +12,19 @@ export function FxLayer() {
   const effects = useThemeStore((s) => s.resolved.effects);
   const tier = useFxTier();
   const reduced = usePrefersReducedMotion();
+  // hydration 门禁（T9 评审批 I，同 agent-dock 模式）：SSR 首帧与客户端挂载前
+  // 一致渲染 null（旧版 SSR 无条件渲染 data-fx=fallback、客户端可能返回
+  // null 的水合警告已随此口径消失），挂载后再进入真实分支。
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [Background, setBackground] = useState<ComponentType<FxProps> | null>(
     null,
   );
 
-  const entry = fxRegistry[effects.background];
+  const entry = fxRegistry[effects.renderer];
   const enabled =
-    effects.background !== "none" &&
-    effects.intensity > 0 &&
+    effects.renderer !== "none" &&
+    effects.rift.intensity > 0 &&
     !reduced &&
     entry !== undefined;
   const meetsTier =
@@ -39,7 +44,7 @@ export function FxLayer() {
     };
   }, [enabled, meetsTier, entry]);
 
-  if (!enabled) return null;
+  if (!mounted || !enabled) return null;
 
   if (!meetsTier || !Background) {
     // 低端设备降级：静态渐变（零 JS 开销）
@@ -56,5 +61,5 @@ export function FxLayer() {
     );
   }
 
-  return <Background intensity={effects.intensity} tier={tier} />;
+  return <Background intensity={effects.rift.intensity} tier={tier} />;
 }

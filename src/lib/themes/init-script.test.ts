@@ -22,7 +22,7 @@ describe("THEME_INIT_SCRIPT", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("lumen");
   });
 
-  it("还原 accentHue 到 --hue-rotate", () => {
+  it("陈旧的 accentHue 持久化值不再被写入 --hue-rotate", () => {
     localStorage.setItem(
       "shizurak:theme",
       JSON.stringify({ themeId: "void", overrides: { accentHue: 40 } }),
@@ -30,7 +30,9 @@ describe("THEME_INIT_SCRIPT", () => {
     runScript();
     expect(
       document.documentElement.style.getPropertyValue("--hue-rotate"),
-    ).toBe("40deg");
+    ).toBe("");
+    // 但 data-theme 还原不受影响
+    expect(document.documentElement.getAttribute("data-theme")).toBe("void");
   });
 
   it("无存储/坏 JSON 时不报错不改属性", () => {
@@ -43,5 +45,16 @@ describe("THEME_INIT_SCRIPT", () => {
     localStorage.setItem("shizurak:theme", JSON.stringify({ themeId: "evil" }));
     runScript();
     expect(document.documentElement.getAttribute("data-theme")).toBeNull();
+  });
+
+  it("白名单由 registry 派生：非首位注册主题（paper）也能还原", () => {
+    // 旧实现硬编码 ["void","lumen"]，paper/terminal 持久化后会被静默丢弃；
+    // 派生自 registry 后，任何注册 id 都在名单内
+    localStorage.setItem(
+      "shizurak:theme",
+      JSON.stringify({ themeId: "paper", overrides: {} }),
+    );
+    runScript();
+    expect(document.documentElement.getAttribute("data-theme")).toBe("paper");
   });
 });

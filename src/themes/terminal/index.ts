@@ -76,7 +76,7 @@ const terminalTokens = {
     shadowMd: "0 0 0 1px rgba(52, 211, 153, 0.25)",
     glow: "0 0 18px rgba(52, 211, 153, 0.18)",
   },
-  texture: { noiseOpacity: 0.02, gridOpacity: 0.06, scanlineOpacity: 0.08 },
+  texture: { noiseOpacity: 0.02, gridOpacity: 0, scanlineOpacity: 0 },
 } satisfies Theme["tokens"]["dark"];
 
 /** terminal · 荧光（预留主题 → preview）：等宽全单色 + CRT 扫描线，契约的"终端"维度验证。 */
@@ -98,6 +98,7 @@ export const terminalTheme: Theme = {
       exit: "steps(6, start)",
       emphasis: "steps(4, end)",
       scroll: "linear",
+      rift: "cubic-bezier(0.85, 0, 0.15, 1)",
     },
     duration: { micro: 90, ui: 180, section: 420, scene: 700 },
     gsap: { ease: "steps(6)" },
@@ -105,18 +106,15 @@ export const terminalTheme: Theme = {
       ui: { stiffness: 420, damping: 38 },
       layout: { stiffness: 420, damping: 38 },
     },
-    scrollIntensity: 0.35,
   },
   effects: {
-    background: "none",
-    overlays: ["scanline", "grid"],
-    cursor: "reticle",
-    hud: true,
-    intensity: 0.5,
+    renderer: "rift-layer",
+    hum: { breath: 0.2, flashlight: false, tremor: 0.4 },
+    rift: { intensity: 0.5 },
   },
   genui: {
-    catalogVariant: "hud",
-    openuiVariant: "hud",
-    streamReveal: { stagger: 12, effect: "decode" },
+    catalogVariant: "stitch",
+    openuiVariant: "stitch",
+    streamReveal: { effect: "tear" },
   },
 };

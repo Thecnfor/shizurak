@@ -6,6 +6,8 @@ export const WCAG_MIN = {
   inkSecondary: 4.5,
   inkMuted: 4.5,
   accentInk: 4.5,
+  // 幕语法（spec §7 对比度行）：针脚 accent 与幕布黑 ≥4.5:1 达标才许用
+  accentOnBg: 4.5,
 } as const;
 
 export interface ContrastViolation {
@@ -61,6 +63,7 @@ export function checkAllThemes(
         ["inkSecondary", t.color.inkSecondary, t.color.bg, "inkSecondary/bg"],
         ["inkMuted", t.color.inkMuted, t.color.bg, "inkMuted/bg"],
         ["accentInk", t.color.accentInk, t.color.accent, "accentInk/accent"],
+        ["accentOnBg", t.color.accent, t.color.bg, "accent/bg"],
       ];
 
       for (const [key, fg, bg, label] of pairs) {
@@ -83,4 +86,69 @@ export function checkAllThemes(
   }
 
   return { pass: violations.length === 0, violations, checks };
+}
+
+/**
+ * 契约 v2 数值域门禁（Task 10 Step 1）：对比度管不了的结构字段。
+ * - hum.breath / hum.tremor / rift.intensity ∈ [0,1]（shader 与 CSS 都按此区间直接消费）
+ * - streamReveal 合理性：effect ∈ {fade, tear}（v2.1：stagger 删除，显现为整卡一次性缝撕）；
+ *   stitch 人格的显现节奏必须是 tear（T9 定案：缝补皮肤只说「撕」，不说「淡入」）
+ */
+export interface SanityViolation {
+  themeId: string;
+  label: string;
+  detail: string;
+}
+
+export function checkEffectSanity(
+  themes: Array<{
+    meta: { id: string };
+    effects: {
+      hum: { breath: number; tremor: number };
+      rift: { intensity: number };
+    };
+    genui: {
+      catalogVariant: string;
+      streamReveal: { effect: string };
+    };
+  }>,
+): SanityViolation[] {
+  const violations: SanityViolation[] = [];
+  const inRange = (v: number) => Number.isFinite(v) && v >= 0 && v <= 1;
+  for (const theme of themes) {
+    const id = theme.meta.id;
+    const { hum, rift } = theme.effects;
+    if (!inRange(hum.breath))
+      violations.push({
+        themeId: id,
+        label: "hum.breath",
+        detail: `${hum.breath} 越出 [0,1]`,
+      });
+    if (!inRange(hum.tremor))
+      violations.push({
+        themeId: id,
+        label: "hum.tremor",
+        detail: `${hum.tremor} 越出 [0,1]`,
+      });
+    if (!inRange(rift.intensity))
+      violations.push({
+        themeId: id,
+        label: "rift.intensity",
+        detail: `${rift.intensity} 越出 [0,1]`,
+      });
+    const sr = theme.genui.streamReveal;
+    if (sr.effect !== "fade" && sr.effect !== "tear")
+      violations.push({
+        themeId: id,
+        label: "streamReveal.effect",
+        detail: `未知显现节奏: ${sr.effect}`,
+      });
+    if (theme.genui.catalogVariant === "stitch" && sr.effect !== "tear")
+      violations.push({
+        themeId: id,
+        label: "streamReveal.effect",
+        detail: `stitch 人格必须 tear，实际 ${sr.effect}`,
+      });
+  }
+  return violations;
 }

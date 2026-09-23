@@ -1,14 +1,32 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { getDictionary } from "@/app/[lang]/dictionaries";
 import { ThemeSwitcher } from "@/components/site/theme-switcher";
 
+/* 底噪 tremor 错相（spec §2.1：随机相位禁同步）：服务端组件不能读 store，
+   延迟用静态内联样式；hum 关闭靠 <html>.hum-off 联动停颤（见 cursor-ring.tsx） */
+const TREMOR_DELAYS = ["0s", "0.6s", "1.2s", "1.8s"];
+
+/** transitionTypes 直递 Next Link → React addTransitionType →
+ *  startViewTransition({ update, types })，由 RiftDirector 按点名派发幕语法
+ *  （spec §2.2：任意页→Lab 是 T2 信号崩解的合法触发点之一）。
+ *  ⚠️ 预取竞态（实测，collapse.spec 靠等 prefetch 落地规避）：transitionTypes 只在
+ *  目标路由的 prefetch 响应**已落地**后存活；预取还在飞时点击，Next 复用未完成请求
+ *  走 ping 提交，React 不带 types → Lab 链接退化成 T1 撕幕。修法候选（跟进项记在计划文档「执行期补记」）：点击路径上主动 await router.prefetch 再 push，
+ *  或等 Next 修掉复用路径丢 types 的行为。 */
+type NavLink = { href: string; label: string; transitionTypes?: string[] };
+
 export async function SiteNav({ lang }: { lang: string }) {
   const dict = await getDictionary();
-  const links = [
+  const links: NavLink[] = [
     { href: `/${lang}/posts`, label: dict.nav.posts },
     { href: `/${lang}/projects`, label: dict.nav.projects },
     { href: `/${lang}/about`, label: dict.nav.about },
-    { href: `/${lang}/lab`, label: dict.nav.lab },
+    {
+      href: `/${lang}/lab`,
+      label: dict.nav.lab,
+      transitionTypes: ["rift-collapse"],
+    },
     { href: `/${lang}/search`, label: dict.nav.search },
   ];
   return (
@@ -16,18 +34,22 @@ export async function SiteNav({ lang }: { lang: string }) {
       <nav className="mx-auto flex h-14 max-w-[var(--container-max)] items-center justify-between px-6">
         <Link
           href={`/${lang}`}
-          transitionTypes={["nav-back"]}
           className="font-mono text-sm tracking-widest text-ink"
         >
           SHIZURAK
         </Link>
         <div className="flex items-center gap-6">
-          {links.map((l) => (
+          {links.map((l, i) => (
             <Link
               key={l.href}
               href={l.href}
-              transitionTypes={["nav-forward"]}
-              className="text-sm text-ink-muted hover:text-ink"
+              transitionTypes={l.transitionTypes}
+              className="hum-tremor text-sm text-ink-muted hover:text-ink"
+              style={
+                {
+                  "--tremor-delay": TREMOR_DELAYS[i % TREMOR_DELAYS.length],
+                } as CSSProperties
+              }
             >
               {l.label}
             </Link>
@@ -40,8 +62,8 @@ export async function SiteNav({ lang }: { lang: string }) {
               dark: dict.theme.dark,
               system: dict.theme.system,
               customize: dict.theme.customize,
-              accentHue: dict.theme.accentHue,
-              intensity: dict.theme.intensity,
+              hum: dict.theme.hum,
+              rift: dict.theme.rift,
               motionSpeed: dict.theme.motionSpeed,
             }}
           />

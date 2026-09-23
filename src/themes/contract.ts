@@ -59,6 +59,7 @@ export interface ThemeTokens {
     borderWidth: string;
   };
   elevation: { shadowSm: string; shadowMd: string; glow: string };
+  // v2 仅 noiseOpacity 有效，grid/scanline 置 0（键保留防 CSS 生成管线断）
   texture: {
     noiseOpacity: number;
     gridOpacity: number;
@@ -68,37 +69,41 @@ export interface ThemeTokens {
 
 export interface ThemeMotion {
   personality: "cinematic" | "precise" | "playful" | "calm";
-  easing: { entrance: string; exit: string; emphasis: string; scroll: string };
+  easing: {
+    entrance: string;
+    exit: string;
+    emphasis: string;
+    scroll: string;
+    rift: string;
+  };
   duration: { micro: number; ui: number; section: number; scene: number }; // ms
   gsap: { ease: string };
   spring: {
     ui: { stiffness: number; damping: number };
     layout: { stiffness: number; damping: number };
   };
-  scrollIntensity: number; // 0–1
 }
 
-export type FxBackgroundId = "nebula" | "starfield" | "none" | "paper-grain";
-export type FxOverlayId = "scanline" | "grain" | "grid" | "vignette";
+export type FxRendererId = "rift-layer" | "none";
 
 export interface ThemeEffects {
-  background: FxBackgroundId;
-  overlays: FxOverlayId[];
-  cursor: "reticle" | "default";
-  hud: boolean;
-  intensity: number; // 0–1
+  renderer: FxRendererId;
+  hum: { breath: number; flashlight: boolean; tremor: number }; // 0–1 底噪
+  rift: { intensity: number }; // 0–1 撕裂烈度（v2.1：tear 方向键删除，方向是语法不是人格）
 }
 
 export interface ThemeGenUI {
-  catalogVariant: "hud" | "clean";
-  openuiVariant: "hud" | "clean";
-  streamReveal: { stagger: number; effect: "fade" | "decode" };
+  catalogVariant: "stitch" | "clean";
+  openuiVariant: "stitch" | "clean";
+  streamReveal: { effect: "fade" | "tear" }; // v2.1：stagger 删除，显现为整卡一次性缝撕
 }
 
 export interface Theme {
   meta: ThemeMeta;
-  /** 继承另一主题 id：新主题只覆写四层中任意一层，其余从基座浅合并。
-   *  registry 加载时物化继承链，resolveTheme 收到的已是扁平结果。 */
+  /**
+   * 继承另一主题 id：新主题只覆写四层中任意一层，其余从基座浅合并。
+   * registry 加载时物化继承链，resolveTheme 收到的已是扁平结果。
+   */
   extends?: string;
   tokens: Partial<Record<ThemeMode, ThemeTokens>>;
   motion: ThemeMotion;
@@ -107,10 +112,7 @@ export interface Theme {
 }
 
 export interface ThemeOverrides {
-  accentHue?: number; // -180..180
-  effectsIntensity?: number; // 0..1
-  motionSpeed?: number; // 0.5..2
-  background?: boolean;
-  overlays?: Partial<Record<FxOverlayId, boolean>>;
-  cursor?: boolean;
+  hum?: number; // 0–1 乘数，默认 1；0 关闭特效层
+  riftIntensity?: number; // 0–1 绝对烈度
+  motionSpeed?: number; // 0.5–2 时长倍率
 }

@@ -4,7 +4,7 @@ import { useThemeStore } from "@/stores/theme-store";
 
 export interface ThemeBridgeService {
   current(): ResolvedTheme;
-  variant(): "hud" | "clean";
+  variant(): "stitch" | "clean";
   /** 主题切换时通知（GenUI 原地换肤消费）；返回取消订阅 */
   subscribe(cb: (r: ResolvedTheme) => void): () => void;
 }

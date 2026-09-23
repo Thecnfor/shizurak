@@ -18,7 +18,9 @@ export const CLIENT_KERNEL_VERSION = 1;
 /** component-kit：GenUI 运行时入口，皮肤变体经 theme-bridge 解析（三引擎共用 catalog） */
 const componentKitPlugin = plugin(
   (ctx: KernelContext) => {
-    const bridge = ctx.require<{ variant(): "hud" | "clean" }>("themeBridge");
+    const bridge = ctx.require<{ variant(): "stitch" | "clean" }>(
+      "themeBridge",
+    );
     ctx.provide("genui", {
       catalogPrompt,
       variant: () => bridge.variant(),

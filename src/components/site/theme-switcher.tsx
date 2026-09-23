@@ -130,24 +130,24 @@ export function ThemeSwitcher({ labels }: { labels: Record<string, string> }) {
               {labels.customize}
             </p>
             <LabeledSlider
-              label={labels.accentHue}
-              display={`${overrides.accentHue ?? 0}°`}
-              min={-180}
-              max={180}
-              step={1}
-              value={overrides.accentHue ?? 0}
-              onValueChange={(v) => setOverride("accentHue", v)}
+              label={labels.hum}
+              display={(overrides.hum ?? 1).toFixed(1)}
+              min={0}
+              max={1}
+              step={0.1}
+              value={overrides.hum ?? 1}
+              onValueChange={(v) => setOverride("hum", v)}
             />
             <LabeledSlider
-              label={labels.intensity}
+              label={labels.rift}
               display={(
-                overrides.effectsIntensity ?? resolved.effects.intensity
+                overrides.riftIntensity ?? resolved.effects.rift.intensity
               ).toFixed(1)}
               min={0}
               max={1}
               step={0.1}
-              value={overrides.effectsIntensity ?? resolved.effects.intensity}
-              onValueChange={(v) => setOverride("effectsIntensity", v)}
+              value={overrides.riftIntensity ?? resolved.effects.rift.intensity}
+              onValueChange={(v) => setOverride("riftIntensity", v)}
             />
             <LabeledSlider
               label={labels.motionSpeed}

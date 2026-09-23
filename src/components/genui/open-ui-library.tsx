@@ -7,10 +7,12 @@ import {
 } from "@openuidev/react-lang";
 import type { ReactNode } from "react";
 import { z } from "zod";
+import { frameClass, useGenUiSkin } from "./skin";
 
 /**
  * OpenUI Lang 组件库（第二 GenUI 引擎，Harness 规范 §3.3）。与 json-render 共用同一套
- * 语义/皮肤（CSS 变量 token → void/lumen 自动换装）。组件 props 在 p.props，嵌套子节点
+ * 皮肤派发（GenUiSkinProvider → frameClass，见 genui-renderer/open-ui-renderer）与
+ * 语义 token（CSS 变量 → 主题自动换装）。组件 props 在 p.props，嵌套子节点
  * 经 p.renderNode(child) 渲染（实测的 react-lang 组件契约）。
  */
 type P = Record<string, any>;
@@ -47,6 +49,7 @@ const Callout = defineComponent({
     tone: z.enum(["info", "success", "warning", "danger"]).optional(),
   }),
   component: (p: ComponentRenderProps<P>) => {
+    const { skin } = useGenUiSkin();
     const map: Record<string, string> = {
       info: "border-border text-ink",
       success: "border-success text-success",
@@ -56,7 +59,13 @@ const Callout = defineComponent({
     const tone = String(p.props.tone ?? "info");
     return (
       <div
-        className={`rounded-md border bg-bg-elevated p-3 text-sm ${map[tone] ?? map.info}`}
+        data-skin={skin}
+        className={frameClass(
+          skin,
+          `rounded-md border bg-bg-elevated p-3 text-sm ${map[tone] ?? map.info}`,
+          // 色调即边框色，缝补只缝形状不夺色（与 registry.Callout 同步）
+          { strongBorder: false },
+        )}
       >
         {String(p.props.text ?? "")}
       </div>
@@ -90,9 +99,16 @@ const Card = defineComponent({
     children: z.array(z.any()).optional(),
   }),
   component: (p: ComponentRenderProps<P>) => {
+    const { skin } = useGenUiSkin();
     const title = p.props.title ? String(p.props.title) : "";
     return (
-      <div className="rounded-md border border-border bg-surface p-4">
+      <div
+        data-skin={skin}
+        className={frameClass(
+          skin,
+          "rounded-md border border-border bg-surface p-4",
+        )}
+      >
         {title ? (
           <p className="mb-2 font-mono text-xs uppercase tracking-widest text-ink-muted">
             {title}
@@ -113,6 +129,7 @@ const MetricGrid = defineComponent({
     ),
   }),
   component: (p: ComponentRenderProps<P>) => {
+    const { skin } = useGenUiSkin();
     const metrics = Array.isArray(p.props.metrics)
       ? (p.props.metrics as Array<{ label: string; value: string | number }>)
       : [];
@@ -121,7 +138,11 @@ const MetricGrid = defineComponent({
         {metrics.map((m) => (
           <div
             key={m.label}
-            className="rounded-md border border-border bg-surface p-3"
+            data-skin={skin}
+            className={frameClass(
+              skin,
+              "rounded-md border border-border bg-surface p-3",
+            )}
           >
             <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
               {m.label}

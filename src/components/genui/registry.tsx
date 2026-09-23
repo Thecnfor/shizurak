@@ -4,10 +4,16 @@ import type {
   ComponentRegistry,
   ComponentRenderProps,
 } from "@json-render/react";
+import { useState } from "react";
+import type { ActionsService } from "@/lib/kernel/plugins/ui-actions";
+import { useKernelService } from "@/lib/kernel/react";
+import { cn } from "@/lib/utils";
+import { frameClass, useGenUiSkin } from "./skin";
 
 /**
- * GenUI 组件注册表（设计规范 §7.2 · Harness 规范 §3.3）。皮肤走主题 CSS 变量，
- * 故同一份 spec 在 void/lumen 下自动换装（token 驱动，见 theme-vars）。
+ * GenUI 组件注册表（设计规范 §7.2 · Harness 规范 §3.3）。皮肤由 renderer 经
+ * GenUiSkinProvider 下发（契约 v2 catalogVariant：stitch 缝补 / clean 原面板），
+ * 颜色仍全走主题 CSS 变量，同一份 spec 在 void/lumen 下自动换装（见 theme-vars）。
  * json-render Renderer 传入 ComponentRenderProps：props 在 element.props。
  */
 type P = Record<string, unknown>;
@@ -25,9 +31,16 @@ function Stack({ element, children }: RCP) {
 }
 
 function Card({ element, children }: RCP) {
+  const { skin } = useGenUiSkin();
   const title = s(element.props.title);
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
+    <div
+      data-skin={skin}
+      className={frameClass(
+        skin,
+        "rounded-md border border-border bg-surface p-4",
+      )}
+    >
       {title ? (
         <p className="mb-2 font-mono text-xs uppercase tracking-widest text-ink-muted">
           {title}
@@ -48,11 +61,19 @@ function Text({ element, children }: RCP) {
 }
 
 function PostCard({ element }: RCP) {
+  const { skin } = useGenUiSkin();
   const tags = Array.isArray(element.props.tags)
     ? (element.props.tags as unknown[])
     : [];
   return (
-    <div className="rounded-md border border-border bg-surface p-4 hover:bg-surface-hover">
+    <div
+      data-skin={skin}
+      className={cn(
+        frameClass(skin, "rounded-md border border-border bg-surface p-4"),
+        // 缝补拒绝清单：悬停底光也是装饰，只在 clean 下保留
+        skin === "clean" && "hover:bg-surface-hover",
+      )}
+    >
       <p className="font-semibold text-ink">{s(element.props.title)}</p>
       {element.props.summary ? (
         <p className="mt-1 text-sm text-ink-muted">
@@ -74,6 +95,7 @@ function PostCard({ element }: RCP) {
 }
 
 function MetricGrid({ element }: RCP) {
+  const { skin } = useGenUiSkin();
   const metrics = Array.isArray(element.props.metrics)
     ? (element.props.metrics as Array<{ label?: unknown; value?: unknown }>)
     : [];
@@ -82,7 +104,11 @@ function MetricGrid({ element }: RCP) {
       {metrics.map((m) => (
         <div
           key={s(m.label)}
-          className="rounded-md border border-border bg-surface p-3"
+          data-skin={skin}
+          className={frameClass(
+            skin,
+            "rounded-md border border-border bg-surface p-3",
+          )}
         >
           <p className="font-mono text-xs uppercase tracking-widest text-ink-muted">
             {s(m.label)}
@@ -97,6 +123,7 @@ function MetricGrid({ element }: RCP) {
 }
 
 function Callout({ element }: RCP) {
+  const { skin } = useGenUiSkin();
   const tone = s(element.props.tone) || "info";
   const map: Record<string, string> = {
     info: "border-border text-ink",
@@ -106,9 +133,53 @@ function Callout({ element }: RCP) {
   };
   return (
     <div
-      className={`rounded-md border bg-bg-elevated p-3 text-sm ${map[tone] ?? map.info}`}
+      data-skin={skin}
+      className={frameClass(
+        skin,
+        `rounded-md border bg-bg-elevated p-3 text-sm ${map[tone] ?? map.info}`,
+        // 色调即边框色（success/warning/danger 语义），缝补只缝形状不夺色
+        { strongBorder: false },
+      )}
     >
       {s(element.props.text)}
+    </div>
+  );
+}
+
+/**
+ * ActionButton（T9 评审批 I）：渲染 label，点击派发到内核 ui-actions 通道
+ * （actions.invoke：L0/L1 直接执行，L2 转 pending 确认卡，见 ui-actions 插件）。
+ * 内核未就绪时禁用；执行报错就地披露（不静默吞）。
+ */
+function ActionButton({ element }: RCP) {
+  const { skin } = useGenUiSkin();
+  const actions = useKernelService<ActionsService>("actions");
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={actions === undefined}
+        onClick={() => {
+          setError(null);
+          void actions
+            ?.invoke(
+              s(element.props.actionId),
+              (element.props.params as Record<string, unknown> | undefined) ??
+                {},
+            )
+            .then((r) => {
+              if (r.status === "error") setError(r.error);
+            });
+        }}
+        className={frameClass(
+          skin,
+          "rounded-md border border-border-strong bg-bg-elevated px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-accent hover:border-accent disabled:opacity-50",
+        )}
+      >
+        {s(element.props.label)}
+      </button>
+      {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
     </div>
   );
 }
@@ -120,4 +191,5 @@ export const genuiRegistry: ComponentRegistry = {
   PostCard,
   MetricGrid,
   Callout,
+  ActionButton,
 };

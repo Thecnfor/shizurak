@@ -17,8 +17,31 @@
     "empty": "没有匹配结果",
     "hint": "输入关键词开始检索（模糊匹配，中英通用）"
   },
-  "footer": { "rights": "© 2026 伍泽凯 · shizurak" },
-  "home": { "heroKicker": "个人站点 · 建设中" },
+  "footer": {
+    "rights": "© 2026 WUZEKAI",
+    "commandHint": "⌘K 命令面板"
+  },
+  "home": {
+    "heroKicker": "个人站点 · 建设中",
+    "signals": "精选信号",
+    "directoryTitle": "项目名录",
+    "directory": [
+      "Rak 集群 — 基础设施 · 生产中",
+      "FlowMind — 工作流自动化 · 孵化中",
+      "XRAK — 开源工具 · 持续迭代",
+      "机器人 — 具身智能 · 预研"
+    ]
+  },
+  "posts": {
+    "headline": "先做出来，再写下来。",
+    "empty": "还没有发布的文章。"
+  },
+  "projects": {
+    "headline": "四个长期运行的东西。"
+  },
+  "about": {
+    "headline": "谁在敲这些字。"
+  },
   "theme": {
     "switcher": "主题",
     "mode": "明暗",
@@ -26,8 +49,8 @@
     "dark": "深色",
     "system": "跟随系统",
     "customize": "个性化",
-    "accentHue": "强调色相",
-    "intensity": "特效强度",
+    "hum": "幕面底噪",
+    "rift": "撕裂烈度",
     "motionSpeed": "动效速度"
   },
   "command": {
@@ -38,6 +61,8 @@
   },
   "agentDock": {
     "open": "AI 导览",
+    "close": "关闭",
+    "send": "发送",
     "title": "AI 导览",
     "placeholder": "问我关于本站的任何事…",
     "soon": "访客 Agent 将于 M2 接入",

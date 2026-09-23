@@ -1,4 +1,7 @@
-import { checkAllThemes } from "../src/lib/themes/contrast-gate";
+import {
+  checkAllThemes,
+  checkEffectSanity,
+} from "../src/lib/themes/contrast-gate";
 import { themeList } from "../src/themes/registry";
 
 const { violations, checks } = checkAllThemes(themeList);
@@ -9,8 +12,18 @@ for (const c of checks) {
   );
 }
 
+// 契约 v2 数值域（Task 10）：hum/rift 区间 + streamReveal 合理性
+const sanity = checkEffectSanity(themeList);
+for (const v of sanity) {
+  console.error(`\u2717 ${v.themeId} ${v.label}: ${v.detail}`);
+}
+
 if (violations.length > 0) {
   console.error(`\n${violations.length} 项对比度未达标`);
+  process.exit(1);
+}
+if (sanity.length > 0) {
+  console.error(`\n${sanity.length} 项效果数值域越界`);
   process.exit(1);
 }
 console.log("\n主题契约校验通过");

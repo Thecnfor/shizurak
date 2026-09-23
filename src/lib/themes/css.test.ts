@@ -16,14 +16,47 @@ describe("themeVarsCss", () => {
     );
   });
   it("令牌转 kebab-case 变量", () => {
-    expect(css).toContain("--bg: #05060a");
-    expect(css).toContain("--ink-secondary: #aab3c0");
-    expect(css).toContain("--radius-sm: 2px");
+    expect(css).toContain("--bg: #07070a");
+    expect(css).toContain("--ink-secondary: #a9b3bc");
+    expect(css).toContain("--radius-sm: 0px");
     expect(css).toContain("--text-h1-size:");
   });
-  it("accent 走 oklch 色相旋转钩子", () => {
+  it("glow 冲突已拆：--glow 归 color.glow，阴影侧走 --shadow-glow", () => {
+    // 旧管线 color.glow 与 elevation.glow 同导 --glow，后写掩盖前写（T9 评审批 M）
+    const block = css.slice(
+      css.indexOf('[data-theme="void"]'),
+      css.indexOf("}", css.indexOf('[data-theme="void"]')),
+    );
+    expect(block).toContain(`--glow: ${voidTheme.tokens.dark!.color.glow};`);
+    expect(block).toContain(
+      `--shadow-glow: ${voidTheme.tokens.dark!.elevation.glow};`,
+    );
+    // 同一块内 --glow 只出现一次（色值），不再有阴影版覆盖
+    expect(block.match(/--glow:/g)?.length).toBe(1);
+  });
+  it("accent 直出令牌色值（hue-rotate 钩子已删除）", () => {
+    expect(css).toContain("--accent: #cfe4ff;");
+    expect(css).toContain("--accent-hover: #e6f1ff;");
+  });
+  it("回归门禁：生成 CSS 不含 oklch(from 相对色值与 hue-rotate 残留", () => {
+    // 旧钩子 oklch(from … calc(h + var(--hue-rotate))) 与 <angle> 注册碰撞，
+    // 使全部主题 accent 整链 IACVT（见 2026-09-21 修复）；不得回潮
+    expect(css).not.toContain("oklch(from");
+    expect(css).not.toContain("hue-rotate");
+  });
+  it("幕语法 easing 从 motion token 直出（源唯一：主题数据）", () => {
+    // globals.css 里的 :root 手工镜像与它的同步义务注释已删，这两条变量
+    // 是 T1/T2 的 animation-timing-function 与光标环过渡的唯一曲线来源
     expect(css).toContain(
-      "oklch(from #5eead4 l c calc(h + var(--hue-rotate, 0)))",
+      `--ease-entrance: ${voidTheme.motion.easing.entrance};`,
+    );
+    expect(css).toContain(`--ease-rift: ${voidTheme.motion.easing.rift};`);
+    // 非幕人格拿到自己的曲线，而不是 void 的副本
+    expect(lumenTheme.motion.easing.entrance).not.toBe(
+      voidTheme.motion.easing.entrance,
+    );
+    expect(css).toContain(
+      `--ease-entrance: ${lumenTheme.motion.easing.entrance};`,
     );
   });
 });
