@@ -126,11 +126,11 @@ export const lumenTheme: Theme = {
   effects: {
     renderer: "none",
     hum: { breath: 0, flashlight: false, tremor: 0 },
-    rift: { tear: "horizontal", intensity: 0 },
+    rift: { intensity: 0 },
   },
   genui: {
     catalogVariant: "clean",
     openuiVariant: "clean",
-    streamReveal: { stagger: 30, effect: "fade" },
+    streamReveal: { effect: "fade" },
   },
 };

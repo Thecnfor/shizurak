@@ -13,10 +13,7 @@ describe("契约 v2", () => {
       flashlight: true,
       tremor: 0.3,
     });
-    expect(voidTheme.effects.rift).toEqual({
-      tear: "diagonal",
-      intensity: 0.7,
-    });
+    expect(voidTheme.effects.rift).toEqual({ intensity: 0.7 });
     expect(voidTheme.genui.catalogVariant).toBe("stitch");
     expect(voidTheme.motion.easing.rift).toBe("cubic-bezier(0.85, 0, 0.15, 1)");
   });

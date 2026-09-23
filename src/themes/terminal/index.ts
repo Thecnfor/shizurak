@@ -110,11 +110,11 @@ export const terminalTheme: Theme = {
   effects: {
     renderer: "rift-layer",
     hum: { breath: 0.2, flashlight: false, tremor: 0.4 },
-    rift: { tear: "horizontal", intensity: 0.5 },
+    rift: { intensity: 0.5 },
   },
   genui: {
     catalogVariant: "stitch",
     openuiVariant: "stitch",
-    streamReveal: { stagger: 12, effect: "tear" },
+    streamReveal: { effect: "tear" },
   },
 };

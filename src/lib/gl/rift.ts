@@ -11,6 +11,7 @@ export interface RiftUniforms {
   res: [number, number];
   mouse: [number, number];
   breath: number;
+  flash: number;
   tear: number;
   collapse: number;
   shift: number;
@@ -20,6 +21,7 @@ export interface RiftUniforms {
 /** 纯 uniform 状态机（无 GL 依赖，jsdom 可测）。Task 6/7 转场经 window.__rift 驱动这里的 setter。 */
 export function createRiftState(effects: {
   breath: number;
+  flashlight: boolean;
   intensity: number;
 }) {
   const u: RiftUniforms = {
@@ -27,6 +29,7 @@ export function createRiftState(effects: {
     res: [1, 1],
     mouse: [0.5, 0.5],
     breath: effects.breath,
+    flash: effects.flashlight ? 1 : 0,
     tear: 0,
     collapse: 0,
     shift: 0,
@@ -38,6 +41,10 @@ export function createRiftState(effects: {
     /** 底噪呼吸直拨（绝对值）：挂载后热更新路径传 resolved effects.hum.breath，不再乘创建时快照 */
     setHum(v: number) {
       u.breath = v;
+    },
+    /** 手电开关（G3）：0/1 直拨 u.flash，FRAG 光斑项乘此值；热更新路径传 resolved effects.hum.flashlight */
+    setFlash(on: boolean) {
+      u.flash = on ? 1 : 0;
     },
     /** 烈度热更（riftIntensity 滑杆）：后续 tear/collapse/shift 按新 K 缩放，无需重挂层 */
     setIntensity(k: number) {
@@ -64,7 +71,7 @@ const VERT = `attribute vec2 position; void main(){ gl_Position = vec4(position,
 
 const FRAG = `precision mediump float;
 uniform vec2 uRes; uniform vec2 uMouse; uniform float uDpr;
-uniform float uBreath, uTear, uCollapse, uShift, uTime;
+uniform float uBreath, uFlash, uTear, uCollapse, uShift, uTime;
 float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
@@ -72,7 +79,7 @@ void main(){
   float breath = (0.5 + 0.5 * sin(uTime * 0.785)) * 0.015 * uBreath;
   // 手电柔光：鼠标径向 300px 光斑
   float d = distance(uv * uRes, uMouse * uRes) / (300.0 * (uRes.x/1440.0));
-  float light = exp(-d*d*3.0) * 0.028 * uBreath;
+  float light = exp(-d*d*3.0) * 0.028 * uBreath * uFlash;
   // 撕裂缝：对角带 + 缝上闪光与 RGB 抖
   float diag = uv.x + uv.y;
   float seam = smoothstep(0.02, 0.0, abs(diag - uTear * 2.2));
@@ -111,6 +118,7 @@ export function mountRift(
       uMouse: { value: state.u.mouse },
       uDpr: { value: renderer.dpr }, // 一次性：创建后 dpr 变化不重编译（窗口跨屏拖拽属边缘场景）
       uBreath: { value: state.u.breath },
+      uFlash: { value: state.u.flash },
       uTear: { value: state.u.tear },
       uCollapse: { value: state.u.collapse },
       uShift: { value: state.u.shift },
@@ -148,6 +156,7 @@ export function mountRift(
       state.u.time = now;
       program.uniforms.uTime.value = now;
       program.uniforms.uBreath.value = state.u.breath;
+      program.uniforms.uFlash.value = state.u.flash;
       program.uniforms.uTear.value = state.u.tear;
       program.uniforms.uCollapse.value = state.u.collapse;
       program.uniforms.uShift.value = state.u.shift;

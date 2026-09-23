@@ -120,7 +120,8 @@
 ThemeEffects {
   renderer: 'rift-layer' | 'none'        // 原 background 字符串枚举废除
   hum: { breath: number; flashlight: boolean; tremor: number }   // 0–1，原 overlays 废除
-  rift: { tear: 'diagonal' | 'horizontal'; intensity: number }    // 0–1 烈度
+  rift: { intensity: number }                                    // 0–1 烈度
+  // v2.1 修订：tear 方向键删除——撕幕方向是语法不是人格（终审 M-2；D12 人格只调气色）
   // cursor: 'reticle' 废除——幕环光标由 CSS/DOM 实现，不占 effects 预算
 }
 ```
@@ -148,7 +149,7 @@ ThemeEffects {
 | **⌘K** | T3 拉焦：全站模糊 → 面板锁焦浮出（全站最贵的交互瞬间，保持零特效余饰） | T3 |
 | **admin** | 工具属性：信息密度提高，人格跟随当前 persona，不配演出 | — |
 
-**GenUI 皮肤**：原 `hud` 变体废除，新变体 **`stitch`（缝补）**——1px 冰蓝缝线边框（dashed hairline）的安静卡片，接收 semantic token 自动换色。流式显现：`streamReveal.effect: 'fade' | 'tear'`（tear = 4 字符宽的小块撕开 ≤80ms；原全页 `decode` 乱码字效废除——它属于终端角色扮演皮肤。**例外**：agent 回复文本的逐字打印属「agent 在场」的表达，保留 fade+打字机，归 genui 层管）。
+**GenUI 皮肤**：原 `hud` 变体废除，新变体 **`stitch`（缝补）**——1px 冰蓝缝线边框（dashed hairline）的安静卡片，接收 semantic token 自动换色。流式显现：`streamReveal.effect: 'fade' | 'tear'`（tear = 4 字符宽的小块撕开 ≤80ms；原全页 `decode` 乱码字效废除——它属于终端角色扮演皮肤。**例外**：agent 回复文本的逐字打印属「agent 在场」的表达，保留 fade+打字机，归 genui 层管）。**v2.1**：stagger 删除——显现为整卡一次性 80ms 缝撕，逐项节奏属 Plan B GenUI 深化（终审 M-3）。
 
 ---
 

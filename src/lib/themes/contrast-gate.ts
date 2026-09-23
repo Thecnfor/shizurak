@@ -91,7 +91,7 @@ export function checkAllThemes(
 /**
  * 契约 v2 数值域门禁（Task 10 Step 1）：对比度管不了的结构字段。
  * - hum.breath / hum.tremor / rift.intensity ∈ [0,1]（shader 与 CSS 都按此区间直接消费）
- * - streamReveal 合理性：stagger 为有限非负数；effect ∈ {fade, tear}；
+ * - streamReveal 合理性：effect ∈ {fade, tear}（v2.1：stagger 删除，显现为整卡一次性缝撕）；
  *   stitch 人格的显现节奏必须是 tear（T9 定案：缝补皮肤只说「撕」，不说「淡入」）
  */
 export interface SanityViolation {
@@ -109,7 +109,7 @@ export function checkEffectSanity(
     };
     genui: {
       catalogVariant: string;
-      streamReveal: { stagger: number; effect: string };
+      streamReveal: { effect: string };
     };
   }>,
 ): SanityViolation[] {
@@ -137,12 +137,6 @@ export function checkEffectSanity(
         detail: `${rift.intensity} 越出 [0,1]`,
       });
     const sr = theme.genui.streamReveal;
-    if (!Number.isFinite(sr.stagger) || sr.stagger < 0)
-      violations.push({
-        themeId: id,
-        label: "streamReveal.stagger",
-        detail: `${sr.stagger} 应为有限非负数`,
-      });
     if (sr.effect !== "fade" && sr.effect !== "tear")
       violations.push({
         themeId: id,

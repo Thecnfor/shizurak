@@ -47,20 +47,18 @@ describe("契约 v2 数值域门禁（checkEffectSanity）", () => {
     bad.effects.rift.intensity = 1.4;
     bad.effects.hum.breath = Number.NaN;
     bad.genui.streamReveal = {
-      stagger: -5,
       effect: "explode",
     } as unknown as typeof bad.genui.streamReveal;
     const labels = checkEffectSanity([bad]).map((v) => v.label);
     expect(labels).toContain("rift.intensity");
     expect(labels).toContain("hum.breath");
-    expect(labels).toContain("streamReveal.stagger");
     expect(labels).toContain("streamReveal.effect");
   });
 
   it("stitch 人格配 fade 节奏被视为违规", () => {
     const bad = structuredClone(themeList[0]); // void：stitch
     bad.genui.catalogVariant = "stitch";
-    bad.genui.streamReveal = { stagger: 10, effect: "fade" };
+    bad.genui.streamReveal = { effect: "fade" };
     const vs = checkEffectSanity([bad]);
     expect(vs.some((v) => v.detail.includes("stitch 人格必须 tear"))).toBe(
       true,

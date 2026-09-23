@@ -89,13 +89,13 @@ export type FxRendererId = "rift-layer" | "none";
 export interface ThemeEffects {
   renderer: FxRendererId;
   hum: { breath: number; flashlight: boolean; tremor: number }; // 0–1 底噪
-  rift: { tear: "diagonal" | "horizontal"; intensity: number }; // 0–1 撕裂烈度
+  rift: { intensity: number }; // 0–1 撕裂烈度（v2.1：tear 方向键删除，方向是语法不是人格）
 }
 
 export interface ThemeGenUI {
   catalogVariant: "stitch" | "clean";
   openuiVariant: "stitch" | "clean";
-  streamReveal: { stagger: number; effect: "fade" | "tear" };
+  streamReveal: { effect: "fade" | "tear" }; // v2.1：stagger 删除，显现为整卡一次性缝撕
 }
 
 export interface Theme {

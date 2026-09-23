@@ -52,6 +52,7 @@ export function RiftLayer() {
           const live = useThemeStore.getState().resolved.effects;
           state = createRiftState({
             breath: live.hum.breath,
+            flashlight: live.hum.flashlight,
             intensity: live.rift.intensity,
           });
           layer = mountRift(canvas, state);
@@ -81,6 +82,9 @@ export function RiftLayer() {
   useEffect(() => {
     stateRef.current?.setHum(effects.hum.breath);
   }, [effects.hum.breath]);
+  useEffect(() => {
+    stateRef.current?.setFlash(effects.hum.flashlight);
+  }, [effects.hum.flashlight]);
   useEffect(() => {
     stateRef.current?.setIntensity(effects.rift.intensity);
   }, [effects.rift.intensity]);

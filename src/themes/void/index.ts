@@ -115,11 +115,11 @@ export const voidTheme: Theme = {
   effects: {
     renderer: "rift-layer",
     hum: { breath: 0.6, flashlight: true, tremor: 0.3 },
-    rift: { tear: "diagonal", intensity: 0.7 },
+    rift: { intensity: 0.7 },
   },
   genui: {
     catalogVariant: "stitch",
     openuiVariant: "stitch",
-    streamReveal: { stagger: 24, effect: "tear" },
+    streamReveal: { effect: "tear" },
   },
 };
