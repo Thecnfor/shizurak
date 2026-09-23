@@ -120,7 +120,9 @@ async function searchPostsInner(
   locale: string,
   query: string,
 ): Promise<SearchHit[]> {
-  const like = `%${query}%`;
+  // 转义 LIKE 通配符（安全审计 F-9）：访客输入含 %/_ 时退化为全表匹配/扫描放大；
+  // 反斜杠是 Postgres LIKE 默认转义符。排序用 similarity(原始 query)，不受影响。
+  const like = `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   // 同一个 sql 片段复用于 select/orderBy：drizzle 别名不带 AS，不能按别名排序
   const score = sql<number>`greatest(similarity(${posts.title}, ${query}), similarity(coalesce(${posts.summary}, ''), ${query}))`;
   const rows = await getDb()

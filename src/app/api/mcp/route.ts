@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
+import { rateLimit } from "@/lib/server/redis";
 
 // blog-as-MCP：把公开内容暴露为 MCP 工具（roadmap），供任何 MCP 客户端/Agent 直连。
 // 无状态 Streamable HTTP：每请求一个 server+transport；enableJsonResponse 免 SSE。
@@ -135,6 +136,27 @@ function buildServer(): McpServer {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // 公开无鉴权入口的可用性护栏（审计 F-5）：体积上限 + 单 IP 30 次/分钟（fail-open 同口径）。
+  if ((Number(req.headers.get("content-length")) || 0) > 64 * 1024) {
+    return new Response(JSON.stringify({ error: "payload_too_large" }), {
+      status: 413,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  const ip =
+    req.headers.get("x-real-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() ??
+    "local";
+  const rl = await rateLimit(`mcp:${ip}`, 30, 60);
+  if (!rl.ok) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(rl.retryAfter ?? 60),
+      },
+    });
+  }
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, // 无状态
     enableJsonResponse: true,

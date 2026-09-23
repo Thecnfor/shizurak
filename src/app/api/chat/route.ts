@@ -5,6 +5,10 @@ import type { AgentService } from "@/kernel/genui/tool-loop";
 import type { JevService } from "@/kernel/plugins/jev-adapter";
 import { rateLimit } from "@/lib/server/redis";
 
+// 体积/条数双闸（安全审计 F-3）：限流只约束次数，不约束单次体积。
+const MAX_CHAT_BYTES = 256 * 1024;
+const MAX_MESSAGES = 50;
+
 // 访客 agent 真实流式端点：内核 ai.agent（AI SDK v7 ToolLoopAgent + 真实 ARK 模型 + 领域工具）
 // cacheComponents 下 Route Handler 天然动态，无需 runtime/dynamic 段配置。
 export async function POST(req: Request): Promise<Response> {
@@ -16,13 +20,29 @@ export async function POST(req: Request): Promise<Response> {
     locale?: string;
   };
   try {
-    body = await req.json();
+    if ((Number(req.headers.get("content-length")) || 0) > MAX_CHAT_BYTES) {
+      return new Response(JSON.stringify({ error: "payload_too_large" }), {
+        status: 413,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    const raw = await req.text();
+    if (raw.length > MAX_CHAT_BYTES) {
+      return new Response(JSON.stringify({ error: "payload_too_large" }), {
+        status: 413,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    body = JSON.parse(raw);
   } catch {
     return new Response("Invalid JSON", { status: 400 });
   }
   const messages = Array.isArray(body.messages) ? body.messages : [];
-  if (messages.length === 0) {
-    return new Response("No messages", { status: 400 });
+  if (messages.length === 0 || messages.length > MAX_MESSAGES) {
+    return new Response(
+      messages.length === 0 ? "No messages" : "Too many messages",
+      { status: 400 },
+    );
   }
 
   // 成本三重闸①：Redis 固定窗口（单 IP 10/min）。fail-open，无 Redis 放行。

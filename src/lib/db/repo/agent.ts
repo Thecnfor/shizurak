@@ -26,7 +26,9 @@ export const specRepo = {
         spec: input.spec,
         themeId: input.themeId,
         source: input.source,
-        threadId: input.threadId ?? null,
+        // 安全审计 F-6：仅接受 UUID 形状的 threadId（非 UUID → PG 22P02 → 500），否则静置 null
+        threadId:
+          input.threadId && isUuid(input.threadId) ? input.threadId : null,
         shared: input.shared ?? false,
       })
       .returning({ id: genuiSpecs.id });

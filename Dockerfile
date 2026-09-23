@@ -12,9 +12,10 @@ WORKDIR /app
 RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# 安全审计 F-10：构建阶段即禁遥测（原先在 build 之后才设，匿名上报已发出）
+ENV NEXT_TELEMETRY_DISABLED=1
 # 生成主题 CSS（prebuild）+ standalone 产物
 RUN pnpm build
-ENV NEXT_TELEMETRY_DISABLED=1
 
 FROM node:22-bookworm-slim AS run
 WORKDIR /app
