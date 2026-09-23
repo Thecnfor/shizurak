@@ -118,6 +118,44 @@
 
 - 现 idle-prefetch 已覆盖稳态。若要消灭首按窗口：把 prefetch 的 `requestIdleCallback` timeout 从 2000ms 收到 800ms（`command-gate.tsx:44`，可编辑，但实测收益受启动长任务挤压不明显，且提前抢带宽会推高 simulated LCP——本轮回滚实验的同款教训），**暂不改**；或接受为"启动后 2 秒内首按偶发慢"。
 
+### 5.5 /posts/[slug] 死链的 HTTP 状态码：200，非 bug 可修（遗留批结论，2026-09-24）
+
+**现象**：`GET /zh/posts/<不存在的 slug>` 返回 `200 OK`（body 是站内的
+「坐标丢失」not-found 视图），而非 404。页面文件（`[slug]/page.tsx`，他人在管）里的
+`if (!post) notFound()` 看起来执行了，状态码却没跟上。
+
+**根因（文档依据 + 本地实码核对，Next 16.3.5）**：`next/dist/docs/01-app/02-guides/streaming.md`
+§The HTTP contract——流一旦开始，状态码已随首块发出，不可回改；mid-stream 的
+`notFound()` 只能以「注入 robots noindex」代替 404。本站 `next.config.ts` 开着
+`cacheComponents: true`，且 `(site)/layout.tsx` 把整个内容区包在 `<Suspense>` 里：
+文章存在性只有 await DB 才知道，而 await 必在 Suspense 边界内挂起 → 壳先交付（200）
+→ `notFound()` 落在流里。文档给的唯一合规模式是「notFound() 在任何 await/Suspense
+之前」，但存在性检查本身就要读 DB，对本路由不成立。
+
+**实测（黑洞 DB + dev 127.0.0.1，curl）**：浏览器 UA 与 Googlebot UA 均 `200`，
+`x-nextjs-prerender: 1`；响应头无 X-Robots-Tag，dev 实测 body 里**没出现**文档说的
+`<meta name="robots" content="noindex">`（注入点在 `make-get-server-inserted-html.js`
+的 HTTPAccessFallbackError 分支，普通 `notFound()` 是否同路未经 prod 构建复核，
+诚实存疑：若 SEO 坐实漏索引，补救是在可编辑的 `robots.ts`/sitemap 层保证不把未发布
+slug 交给爬虫，而不是改路由）。另：黑洞期所有存在性检查都「查不到」→ 全量 slug 都是这个
+ 200-not-found，与生产 DB 恢复后的行为同一口径（同一条流式约束，不是黑洞特例）。
+
+**外部修法逐一否决（均不 hack）**：
+- `proxy.ts` 早拒：中间件要按请求查 DB 才能知道 slug 存在性——黑洞期要么 fail-open
+  （问题原样存在）要么 fail-closed（误杀全部文章页），且每次阅读多一跳串行 DB 往返，
+  把流式首字节的收益倒贴回去。不合规。
+- `next.config.ts` redirects：静态规则无从知道 slug 集合。不可行。
+- `generateStaticParams` + `dynamicParams=false`：非建表期 slug 在路由层真 404，但
+  新发文章必须重建才能访问；且黑洞 DB 下 generateStaticParams 只剩哨兵 slug（T9 评审批 C
+  的设计初衷），等于全站文章 404。后果不可接受。
+- ingress/nginx 改写：状态码在应用流内，入口层看不到 body 里的 not-found 语义。不可行。
+
+**结论**：在本架构（cacheComponents + 流式 + DB 存在性）下，200-not-found 是 Next 产
+品契约行为，无「页面文件之外」的合法修复点。真正的修复只能在 `[slug]/page.tsx` 解冻后
+配合「非挂起的存在性检查源」做（候选：发布时维护一份静态 slug 清单供页前同步读），
+记此处待需；日常 SEO 风险已由「站内链只指向真文章」控制。不伪造上游 issue 号；
+这一约束在 Next 官方 streaming 文档中是明示设计而非 bug。
+
 ## 6. 修复清单（本轮已提交）
 
 | # | 文件:行 | 内容 | 验证 |

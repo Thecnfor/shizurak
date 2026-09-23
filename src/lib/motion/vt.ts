@@ -101,6 +101,57 @@ export type RiftGrammar = "rift-t1" | "rift-t2";
 /** Link 的 transitionTypes 值 → 语法类（T2 目前只有崩解一种点名） */
 const COLLAPSE_TYPE = "rift-collapse";
 
+/**
+ * 点击时语法意图（prefetch 竞态的兜底线头）。
+ *
+ * 已实测缺陷（collapse.spec 文件头有案）：Link 的 prefetch 响应还在飞时点击，
+ * Next 复用未完成请求走提交，React 提交不带 types → T2 点名退化成 T1 撕幕。
+ * 研究结论（Next 16.3.5，node_modules/next/dist 实读）：
+ * - `router.push(href, { transitionTypes })` 是官方支持的（NavigateOptions，
+ *   shared/lib/app-router-context.shared-runtime.d.ts；内部 startTransition +
+ *   addTransitionType，与 Link 同一条 types 通道）；
+ * - 但 `router.prefetch()` 公开返回 void——内部 prefetch promise 在
+ *   client/components/app-router-instance.js 的适配器里被丢弃（fire-and-forget），
+ *   「await prefetch 落地再 push」这条点击拦截方案在公开 API 上做不出来，而裸 push
+ *   依旧会复用 in-flight 请求、丢 types 的场景原样存在。
+ *
+ * 所以不押 Next 的提交时序，改押我们自持的补丁：点击时同步声明意图，驱动在下一条
+ * 「无 rift-* 点名的路由过渡」提交时消费它（一次性）；types 正常落地的路径以 types
+ * 为准，点名在场时意图直接作废回收。意图带 TTL：点击后被取消/导航失败的悬注意图
+ * 不许污染后来的无关过渡。已知容忍度：意图不绑 href——点击与提交之间若插进另一条
+ * 无点名路由过渡，会被它消耗掉（后续 SignalRow 自己的过渡照旧退化），3s 窗口内这种
+ * 并发在站内没有现实触发面。
+ */
+const GRAMMAR_INTENT_TTL_MS = 3000;
+let grammarIntent: { type: string; at: number } | null = null;
+
+/** 点击时声明「下一次路由过渡该有的语法点名」（与 transitionTypes 同词汇表） */
+export function declareGrammarIntent(type: string): void {
+  grammarIntent = { type, at: Date.now() };
+}
+
+/** 回收悬注意图（声明后再也不导航时的显式清场；测试观察面也用这个） */
+export function clearGrammarIntent(): void {
+  grammarIntent = null;
+}
+
+/** 有过期检查的意图观察（不移除） */
+export function peekGrammarIntent(): string | null {
+  if (!grammarIntent) return null;
+  if (Date.now() - grammarIntent.at > GRAMMAR_INTENT_TTL_MS) {
+    grammarIntent = null;
+    return null;
+  }
+  return grammarIntent.type;
+}
+
+/** 一次性取走意图（过期即作废）：只允许驱动内部调用 */
+function takeGrammarIntent(): string | null {
+  const type = peekGrammarIntent();
+  grammarIntent = null;
+  return type;
+}
+
 /** 语法闸门输入：每次 startViewTransition 调用时从 store 现取 */
 export interface RiftGate {
   reduced: boolean;
@@ -305,7 +356,23 @@ export function installRiftTransitionDriver(
 
   const patched = function (this: Document, arg?: RiftTransitionArg) {
     const snapshot = getSnapshot();
-    const grammar = riftGrammarFor(arg, {
+    // 竞态兜底：路由过渡提交不带 rift-* 点名时，消费点击时声明的意图补上；
+    // 带点名则意图回收作废（正常路径 types 为王，绝不允许意图越权粘机）。
+    // 回调形态（主题 morph）不碰意图——那不是路由提交，消耗了会漏给真路由过渡。
+    let effectiveArg = arg;
+    if (isRouteTransitionCall(arg)) {
+      const declared = readTypes(arg);
+      if (declared.some((t) => t.startsWith("rift-"))) clearGrammarIntent();
+      else {
+        const intent = takeGrammarIntent();
+        if (intent)
+          effectiveArg = {
+            ...(arg as Omit<StartViewTransitionOptions, "types">),
+            types: [...declared, intent],
+          };
+      }
+    }
+    const grammar = riftGrammarFor(effectiveArg, {
       reduced: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
       intensity: snapshot.riftIntensity,
     });

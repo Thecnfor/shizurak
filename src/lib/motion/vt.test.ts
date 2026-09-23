@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { voidTheme } from "@/themes/registry";
 import {
+  clearGrammarIntent,
+  declareGrammarIntent,
   installRiftTransitionDriver,
   isRiftRouteTransition,
   isRouteTransitionCall,
@@ -136,6 +138,7 @@ describe("installRiftTransitionDriver（挂载/还原/类生命周期）", () =>
 
   beforeEach(() => {
     root.className = "";
+    clearGrammarIntent(); // 模块级意图态不跨用例残留
     vi.restoreAllMocks();
   });
 
@@ -340,6 +343,133 @@ describe("installRiftTransitionDriver（挂载/还原/类生命周期）", () =>
     } finally {
       uninstall();
       Reflect.deleteProperty(window, "__rift");
+    }
+  });
+});
+
+describe("语法意图（prefetch 竞态的点击时兜底，遗留批）", () => {
+  const root = document.documentElement;
+  const snapshot = (): RiftDriverSnapshot => ({
+    motion: MOTION,
+    riftIntensity: 0.7,
+  });
+
+  beforeEach(() => {
+    root.className = "";
+    clearGrammarIntent();
+    vi.useRealTimers();
+  });
+
+  it("意图在场 + 提交不带 types → 补成 rift-t2（竞态主修目标）", async () => {
+    const { make, transitions } = fakeNative();
+    document.startViewTransition = make;
+    const uninstall = installRiftTransitionDriver(snapshot);
+    try {
+      declareGrammarIntent("rift-collapse");
+      // 竞态现场：Next 复用 in-flight 预取，React 提交 types 丢光
+      document.startViewTransition({ update, types: [] });
+      expect(root.classList.contains("rift-t2")).toBe(true);
+      expect(root.classList.contains("rift-t1")).toBe(false);
+      transitions[0].resolveFinished();
+      await transitions[0].finished;
+      await microtasks();
+      expect(root.classList.contains("rift-t2")).toBe(false);
+    } finally {
+      uninstall();
+    }
+  });
+
+  it("意图一次性：被消费后下一条无点名过渡回到 T1，不粘成 T2", async () => {
+    const { make, transitions } = fakeNative();
+    document.startViewTransition = make;
+    const uninstall = installRiftTransitionDriver(snapshot);
+    try {
+      declareGrammarIntent("rift-collapse");
+      document.startViewTransition({ update });
+      expect(root.classList.contains("rift-t2")).toBe(true);
+      transitions[0].resolveFinished();
+      await transitions[0].finished;
+      await microtasks();
+      document.startViewTransition({ update });
+      expect(root.classList.contains("rift-t1")).toBe(true);
+      expect(root.classList.contains("rift-t2")).toBe(false);
+    } finally {
+      uninstall();
+    }
+  });
+
+  it("types 已自带 rift-* 点名 → 意图作废回收，不留给后一条", async () => {
+    const { make, transitions } = fakeNative();
+    document.startViewTransition = make;
+    const uninstall = installRiftTransitionDriver(snapshot);
+    try {
+      declareGrammarIntent("rift-collapse");
+      // 健康路径：Link 的 types 正常落地，意图多余且必须被清
+      (document.startViewTransition as (arg: unknown) => ViewTransition)({
+        update,
+        types: new Set(["rift-tear"]), // 其它 rift-* 点名：让路，不挂任何类
+      });
+      expect(root.classList.contains("rift-t2")).toBe(false);
+      expect(root.classList.contains("rift-t1")).toBe(false);
+      transitions[0].resolveFinished();
+      await Promise.resolve();
+      // 意图已被点名路径回收：下一条无点名过渡是 T1，不是被残意抬成 T2
+      document.startViewTransition({ update });
+      expect(root.classList.contains("rift-t1")).toBe(true);
+    } finally {
+      uninstall();
+      root.classList.remove("rift-t1");
+    }
+  });
+
+  it("回调形态（主题 morph）不消耗意图：真路由过渡才接得住", () => {
+    const { make } = fakeNative();
+    document.startViewTransition = make;
+    const uninstall = installRiftTransitionDriver(snapshot);
+    try {
+      declareGrammarIntent("rift-collapse");
+      document.startViewTransition(update); // 回调形态：不碰意图也不挂类
+      expect(root.className).toBe("");
+      document.startViewTransition({ update });
+      expect(root.classList.contains("rift-t2")).toBe(true);
+    } finally {
+      uninstall();
+      root.classList.remove("rift-t2");
+    }
+  });
+
+  it("TTL 过期：点击后导航被 cancel，悬意图不许污染 3s 后的无关过渡", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-24T00:00:00Z"));
+    const { make } = fakeNative();
+    document.startViewTransition = make;
+    const uninstall = installRiftTransitionDriver(snapshot);
+    try {
+      declareGrammarIntent("rift-collapse");
+      vi.advanceTimersByTime(3001);
+      document.startViewTransition({ update });
+      expect(root.classList.contains("rift-t1")).toBe(true);
+      expect(root.classList.contains("rift-t2")).toBe(false);
+    } finally {
+      uninstall();
+      vi.useRealTimers();
+      root.classList.remove("rift-t1");
+    }
+  });
+
+  it("烈度门优先：intensity=0 时意图在场也不挂类（与 types 路径同一道门）", () => {
+    const { make } = fakeNative();
+    document.startViewTransition = make;
+    const uninstall = installRiftTransitionDriver(() => ({
+      motion: MOTION,
+      riftIntensity: 0,
+    }));
+    try {
+      declareGrammarIntent("rift-collapse");
+      document.startViewTransition({ update });
+      expect(root.className).toBe("");
+    } finally {
+      uninstall();
     }
   });
 });

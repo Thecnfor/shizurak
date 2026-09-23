@@ -7,7 +7,7 @@ import type {
 import { useEffect, useState } from "react";
 import { ensureClientKernel } from "@/lib/kernel/client-boot";
 import type { ActionsService } from "@/lib/kernel/plugins/ui-actions";
-import { useKernelService } from "@/lib/kernel/react";
+import { useKernel, useKernelService } from "@/lib/kernel/react";
 import { cn } from "@/lib/utils";
 import { frameClass, useGenUiSkin } from "./skin";
 
@@ -151,40 +151,91 @@ function Callout({ element }: RCP) {
  * ActionButton（T9 评审批 I）：渲染 label，点击派发到内核 ui-actions 通道
  * （actions.invoke：L0/L1 直接执行，L2 转 pending 确认卡，见 ui-actions 插件）。
  * 内核未就绪时禁用；执行报错就地披露（不静默吞）。
+ *
+ * 遗留批接上 pending 状态线：invoke 在飞 = busy（禁用 + 转圈 + aria-busy），
+ * promise 落定（含 reject，不再悬空）才解；L2 的 ui.action.pending 同时接事件总线
+ * 与 invoke 返回两条来源（任一路命中即标「待确认」提示行），ui.action.invoked
+ * 到达即清。诚实注记：确认卡本体（pendingActions 消费面）尚不存在，L2 落定后
+ * 只剩静态提示而非 spinner——spinner 绝不等一个不存在的事件，否则永挂。
+ * 缝补皮肤语义不变：spinner 只是 mono 字符旋转，无 glow/装饰类。
  */
 function ActionButton({ element }: RCP) {
   const { skin } = useGenUiSkin();
+  const kernel = useKernel();
   const actions = useKernelService<ActionsService>("actions");
+  const [busy, setBusy] = useState(false);
+  const [awaiting, setAwaiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const actionId = s(element.props.actionId);
   // 内核已改懒载（T10 补记）：消费 ui-actions 的组件挂载即消费信号，
   // 触发启动（幂等）；就绪前按钮维持既有禁用容错
   useEffect(() => {
     void ensureClientKernel().catch(() => {});
   }, []);
+  // ui.action.* 事件线：同名动作经其它入口（agent dock 等）派发/落定时，
+  // 本按钮的指示态跟着走（payload 形状：{ id }，见 ui-actions 插件 emit；
+  // 总线把 emit 的实参逐个传给 handler，首参即 payload）
+  useEffect(() => {
+    if (!kernel) return;
+    const hit = (first: unknown) =>
+      (first as { id?: string } | undefined)?.id === actionId;
+    const offPending = kernel.context.on("ui.action.pending", (first) => {
+      if (hit(first)) setAwaiting(true);
+    });
+    const offInvoked = kernel.context.on("ui.action.invoked", (first) => {
+      if (hit(first)) {
+        setAwaiting(false);
+        setBusy(false);
+      }
+    });
+    return () => {
+      offPending();
+      offInvoked();
+    };
+  }, [kernel, actionId]);
   return (
     <div>
       <button
         type="button"
-        disabled={actions === undefined}
+        disabled={actions === undefined || busy}
+        aria-busy={busy || undefined}
         onClick={() => {
+          if (!actions) return;
           setError(null);
+          setAwaiting(false);
+          setBusy(true);
           void actions
-            ?.invoke(
-              s(element.props.actionId),
+            .invoke(
+              actionId,
               (element.props.params as Record<string, unknown> | undefined) ??
                 {},
             )
             .then((r) => {
               if (r.status === "error") setError(r.error);
-            });
+              // L2：invoke 同步返回 pending（事件线可能比这里的 then 更早到，
+              // 两路都写同一个幂等态）；落定后 spinner 交给 finally 收
+              if (r.status === "pending") setAwaiting(true);
+            })
+            .catch((err: unknown) => setError(String(err)))
+            .finally(() => setBusy(false));
         }}
         className={frameClass(
           skin,
           "rounded-md border border-border-strong bg-bg-elevated px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-accent hover:border-accent disabled:opacity-50",
         )}
       >
+        {busy ? (
+          <span aria-hidden className="mr-1.5 inline-block animate-spin">
+            ◌
+          </span>
+        ) : null}
         {s(element.props.label)}
       </button>
+      {awaiting && !busy ? (
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-ink-faint">
+          已转确认 · 等待授权
+        </p>
+      ) : null}
       {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
     </div>
   );

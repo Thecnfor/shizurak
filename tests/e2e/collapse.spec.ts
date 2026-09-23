@@ -16,6 +16,9 @@ import { sampleVtWindow, watchClassLifecycle } from "./probes";
  * 2. transitionTypes 只在 **prefetch 已落地**的导航上存活：预取还在飞时点击，Next 复用
  *    未完成请求，DOM 由 ping 提交，React 不再带 types（实测首点 types: null →
  *    被打成 T1）。故点之前先等 /zh/lab 的预取响应。
+ *    遗留批注记：首页 SignalRow 已改用点击时 declareGrammarIntent 兜底（vt.ts），
+ *    不再需要这类等待；但本 spec 的触发面是 nav.tsx 的 Lab 链接（他人在管，未接
+ *    同款声明），prefetch 竞态对它依旧成立，helper 保持现状。
  */
 
 /** 类存活墙钟上限：CSS 侧 600ms，另加 native 建立快照 + React finished 的 passive-effects
