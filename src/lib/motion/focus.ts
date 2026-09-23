@@ -1,7 +1,7 @@
 "use client";
 
 import { gsap } from "gsap";
-import { cssEase } from "@/lib/motion/gsap";
+import { applyMotionDefaults, cssEase } from "@/lib/motion/gsap";
 import type { ThemeMotion } from "@/themes/contract";
 
 /** T3 镜头拉焦总预算（spec §7 红线：T3 ≤350ms，超限视同 L2 违规） */
@@ -41,6 +41,9 @@ export function focusPull(
   };
 
   el.setAttribute("data-focus-pull", "1");
+  // gsap 已拆出首载（T10 补记）：本模块属 ⌘K 动态路径，落地时应用当时主题的
+  // 默认值（接管旧 theme-provider 的调用点）；tween 均显式传参，此处只保语义
+  applyMotionDefaults(motion);
   const d = t3Seconds(motion);
   const ease = cssEase(motion.easing.rift) ?? motion.gsap.ease;
   const tl = gsap.timeline({ onComplete: clear });

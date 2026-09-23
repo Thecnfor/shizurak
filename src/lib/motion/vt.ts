@@ -1,8 +1,21 @@
 "use client";
 
-import { gsap } from "gsap";
-import { cssEase } from "@/lib/motion/gsap";
 import type { ThemeMotion } from "@/themes/contract";
+
+/**
+ * gsap 已拆出首载（T10 补记 size 削减）：撕幕/崩解时间线在动画真要跑的
+ * 那一刻才动态加载 gsap 块（首撕前由 RiftDirector 空闲预温），并顺手应用
+ * 当时主题的 gsap 默认值（接管旧 theme-provider 的 applyMotionDefaults）。
+ * 加载失败降级：CSS 侧语法类照常，只是本轮不驱动 shader uniform。
+ */
+async function loadGsap(motion: ThemeMotion) {
+  const [gsapMod, motionMod] = await Promise.all([
+    import("gsap"),
+    import("@/lib/motion/gsap"),
+  ]);
+  motionMod.applyMotionDefaults(motion);
+  return { gsap: gsapMod.gsap, cssEase: motionMod.cssEase };
+}
 
 /**
  * 把一次会改变 DOM 的同步变更包进原生 View Transition（整站跨主题 morph）。
@@ -188,7 +201,7 @@ export function installRiftTransitionDriver(
     // 起算点＝ ready 落地（快照已拍、DOM 已换、CSS 动画正起跑），不从 startViewTransition
     // 调用点起算：那里还夹着 RSC 取数与 Suspense 解挂，可能白等数百 ms 而无动画
     void transition.ready.then(
-      () => {
+      async () => {
         animating = true;
         active += 1;
         root.classList.add("rift-tear");
@@ -196,13 +209,16 @@ export function installRiftTransitionDriver(
         // Math.min 封顶守 §7 红线（motionSpeed=0.5 时同样被封顶），
         // 并与 globals.css 的 animation-duration: 300ms 同窗
         const duration = Math.min(T1_BUDGET_MS, motion.duration.ui + 20) / 1000;
+        const g = await loadGsap(motion).catch(() => null);
+        // 块未到位前过渡已收尾（settle 已清场）或加载失败：本轮不驱动 shader
+        if (!g || !animating) return;
         tween?.kill();
         const state = { p: 0 };
         let shiftSign = 1;
-        tween = gsap.to(state, {
+        tween = g.gsap.to(state, {
           p: 1,
           duration,
-          ease: cssEase(motion.easing.rift) ?? motion.gsap.ease,
+          ease: g.cssEase(motion.easing.rift) ?? motion.gsap.ease,
           onUpdate() {
             rift?.setTear(state.p);
             // 前 1/4 程每帧翻一次符号（±1 交替的 RGB 分离），之后归位
@@ -248,19 +264,23 @@ export function installRiftTransitionDriver(
     totalMs: number,
   ) {
     const rift = (window as unknown as RiftDriverScope).__rift;
-    const ease = cssEase(motion.easing.rift) ?? motion.gsap.ease;
     const state = { p: 0 };
     let flight: { kill(): void } | null = null;
     let started = false;
+    let ended = false;
 
     void transition.ready.then(
-      () => {
+      async () => {
         started = true;
+        const g = await loadGsap(motion).catch(() => null);
+        // 块未到位前已收尾或加载失败：本轮不驱动崩解 uniform
+        if (!g || ended) return;
+        const ease = g.cssEase(motion.easing.rift) ?? motion.gsap.ease;
         // 两段一条：0→峰占 45%（CSS 侧旧幕至 55% 完全隐去、新幕从 45% 起显现，
         // 交叠窗口是 [45%,55%]：峰值正落在窗口起点 45%，即新幕开始现身、碎屑最盛处），
         // 峰→0 占余下 55%，
         // 总时长与 CSS 动画同窗；onUpdate 挂在时间线上，每帧只回写一次 uniform
-        flight = gsap
+        flight = g.gsap
           .timeline({
             onUpdate() {
               rift?.setCollapse(state.p);
@@ -275,6 +295,7 @@ export function installRiftTransitionDriver(
     );
 
     const settle = () => {
+      ended = true;
       flight?.kill();
       flight = null;
       if (started) rift?.setCollapse(0);

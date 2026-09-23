@@ -4,17 +4,18 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { PanelRight, Send, X } from "lucide-react";
 import { useParams } from "next/navigation";
-import { Activity, useMemo, useRef, useState } from "react";
+import { Activity, useEffect, useMemo, useRef, useState } from "react";
 import { GenuiRenderer } from "@/components/genui/genui-renderer";
 import { OpenUIRenderer } from "@/components/genui/open-ui-renderer";
 import type { Labels } from "@/components/site/agent-dock";
+import type { Kernel } from "@/kernel/core";
 import {
   parseOpenuiBlock,
   parseSpecBlock,
   stripOpenuiBlock,
   stripSpecBlock,
 } from "@/lib/genui/parse-spec";
-import { getClientKernel } from "@/lib/kernel";
+import { ensureClientKernel } from "@/lib/kernel/client-boot";
 import type { PageContextService } from "@/lib/kernel/plugins/page-context";
 import { useThemeStore } from "@/stores/theme-store";
 import { useUIShellStore } from "@/stores/ui-shell-store";
@@ -124,13 +125,29 @@ export default function DockPanel({ labels }: { labels: Labels }) {
   const params = useParams<{ lang: string }>();
   const scroller = useRef<HTMLDivElement>(null);
 
+  // 内核已改懒载（T10 补记）：dock 面板挂载即 chat 意图，触发启动并持有实例；
+  // 极端情况下首帧就绪前就发消息，诚实传空 page-context（服务端容错）
+  const kernelRef = useRef<Kernel | null>(null);
+  useEffect(() => {
+    let alive = true;
+    ensureClientKernel().then(
+      (k) => {
+        if (alive) kernelRef.current = k;
+      },
+      () => {},
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
         prepareSendMessagesRequest: ({ messages, id }) => {
-          const k = getClientKernel();
-          const pc = k.context.has("pageContext")
+          const k = kernelRef.current;
+          const pc = k?.context.has("pageContext")
             ? k.context.require<PageContextService>("pageContext").snapshot()
             : [];
           return {

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { CommandMenu } from "@/components/command/command-menu";
+import { CommandGate } from "@/components/command/command-gate";
 import { HumGate } from "@/components/fx/cursor-ring";
 import { FxLayer } from "@/components/fx/fx-layer";
 import { RiftDirector } from "@/components/fx/rift-director";
@@ -42,7 +42,7 @@ export default async function SiteLayout({
               approvalDone: dict.agentDock.approvalDone,
             }}
           />
-          <CommandMenu
+          <CommandGate
             lang={lang}
             labels={{
               placeholder: dict.command.placeholder,

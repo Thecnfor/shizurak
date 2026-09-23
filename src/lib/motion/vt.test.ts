@@ -277,7 +277,12 @@ describe("installRiftTransitionDriver（挂载/还原/类生命周期）", () =>
 
       transitions[0].resolveReady();
       await transitions[0].ready;
-      // 崩解时间线以 ready 为锚（与 CSS 伪元素动画同起点），走真 rAF 推帧
+      // 崩解时间线以 ready 为锚（与 CSS 伪元素动画同起点），走真 rAF 推帧。
+      // gsap 已懒载（首载削减）：时间线要等 chunk 落地才起推，这里等到位再断言
+      // 推帧语义，而不是假设同步可用——落地失败本身就是要被这套断言抓住的回归。
+      expect(
+        await untilFrames(() => setCollapse.mock.calls.length > 0, 120),
+      ).toBe(true);
       await frames(3);
       expect(setCollapse).toHaveBeenCalled();
       expect(setCollapse.mock.calls.at(-1)?.[0]).toBeGreaterThan(0);
@@ -343,6 +348,15 @@ describe("installRiftTransitionDriver（挂载/还原/类生命周期）", () =>
 async function frames(n: number) {
   for (let i = 0; i < n; i++)
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
+}
+
+/** 逐帧等到条件成立（上限 maxFrames 帧），成立返回 true——懒载落地的时序用 */
+async function untilFrames(predicate: () => boolean, maxFrames: number) {
+  for (let i = 0; i < maxFrames; i++) {
+    if (predicate()) return true;
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
+  return predicate();
 }
 
 /** 把 finished 上的 then 链（含 settle）排干 */

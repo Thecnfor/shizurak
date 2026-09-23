@@ -22,12 +22,11 @@ theme-check:
   stage: verify
   script: [pnpm theme:check]
 
-# 预算门禁接线（计划「T10 二审批②」后续项落地）：size 暂 allow_failure——
-# 首页 first-load 341.4KB vs 预算 170KB 是已记录的预算偏差（见计划补记
-# 「首页 first-load 预算偏差」），红线保留 exit 1 供 CI 披露，预算重新谈判后去掉本行。
+# 预算门禁（2026-09-23 首载削减后改为阻断）：红线 216KB = 实测地板 179.9KB × 1.2，
+# 当前余量 20.1%（≥15% 门槛，推导见 scripts/size-check.mjs 注释）。旧的 170KB 预算低于
+# 框架地板（react-dom+Next runtime 131.9KB + 幕语法/主题必需首载），不可达，已重新谈判。
 size-check:
   stage: verify
-  allow_failure: true
   script:
     - pnpm build # 走 prebuild 生成 theme-vars.generated.css（git-ignored）
     - node scripts/size-check.mjs

@@ -1,29 +1,22 @@
 "use client";
 
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import type { Kernel } from "@/kernel/core";
-import { whenClientKernelReady } from "./index";
 
 const KernelCtx = createContext<Kernel | null>(null);
 
-/** 前端内核唯一 React 接入点：启动内核并把 Context 注入子树。 */
-export function KernelProvider({ children }: { children: ReactNode }) {
-  const [kernel, setKernel] = useState<Kernel | null>(null);
-  useEffect(() => {
-    let alive = true;
-    whenClientKernelReady().then((k) => {
-      if (alive) setKernel(k);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
+/**
+ * 前端内核唯一 React 接入点：接收已启动的内核实例并注入子树。
+ * 启动时序移交 client-boot.ensureClientKernel（由 ClientKernelShell 接线）：
+ * 本文件不再静态引用 "./index"，否则 cordis+zod 图会回到首载关键包。
+ */
+export function KernelProvider({
+  children,
+  kernel = null,
+}: {
+  children: ReactNode;
+  kernel?: Kernel | null;
+}) {
   return <KernelCtx.Provider value={kernel}>{children}</KernelCtx.Provider>;
 }
 

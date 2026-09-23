@@ -6,6 +6,14 @@ import {
   watchClassAppear,
 } from "./probes";
 
+/**
+ * 导航提交的等待窗口（不是语义放宽）：cmdk/内核已改为首按时懒载，dev 下
+ * 首按 ⌘K 会并发按需编译 command-menu + cordis 内核 chunk，与 /zh/projects 的
+ * 冷编译抢同一个单进程 CPU（本机 6 worker 并跑实测导航可超 10s）。
+ * 断言目标本身（落到 /zh/projects、出现 rift-tear）一字不改。
+ */
+const NAV_COMMIT_TIMEOUT_MS = 25_000;
+
 test("⌘K 打开面板并执行主题命令", async ({ page }) => {
   await page.goto("/zh");
   // 命令面板独立 chunk：以自身就绪探针为准（键盘监听注册同帧翻转）
@@ -27,8 +35,11 @@ test("导航命令跳转", async ({ page }) => {
   await expect(page.getByPlaceholder("搜索或输入命令…")).toBeVisible();
   await page.keyboard.type("项目");
   await page.keyboard.press("Enter");
-  // 10s 口径同 fx/smoke：/zh/projects 在 dev 下冷编译可达 5s，全量并跑时默认 5s 会误爆
-  await expect(page).toHaveURL(/\/zh\/projects$/, { timeout: 10_000 });
+  // 10s→懒载窗口：/zh/projects 在 dev 下冷编译可达 5s，全量并跑时默认 5s 会误爆，
+  // 而首按 ⌘K 还要并发改编译 cmdk/内核 chunk
+  await expect(page).toHaveURL(/\/zh\/projects$/, {
+    timeout: NAV_COMMIT_TIMEOUT_MS,
+  });
 });
 
 /**
@@ -46,13 +57,15 @@ test("导航命令跳转也吃 T1 撕幕（driver 覆盖 router.push）", async 
   await settleDeferredBoundaries(page);
   // 窗口从装探针起算，覆盖「等面板可见+输入+提交」全程：负载下 dev 提交可超 6s，
   // 正例不该因基础设施延时假失败（命中即 resolve，宽窗零成本）
-  const seen = watchClassAppear(page, "rift-tear", 15_000);
+  const seen = watchClassAppear(page, "rift-tear", NAV_COMMIT_TIMEOUT_MS);
   await page.keyboard.press("ControlOrMeta+k");
   // 同上：面板可见再敲字（另装探针在前不矛盾——rift-tear 只在 Enter 导航后才可能挂类）
   await expect(page.getByPlaceholder("搜索或输入命令…")).toBeVisible();
   await page.keyboard.type("项目");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/\/zh\/projects$/, { timeout: 10_000 });
+  await expect(page).toHaveURL(/\/zh\/projects$/, {
+    timeout: NAV_COMMIT_TIMEOUT_MS,
+  });
   expect(await seen).toBe(true);
 });
 

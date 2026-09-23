@@ -1,4 +1,3 @@
-import { catalogPrompt } from "@/components/genui/catalog";
 import {
   defineKernel,
   type Kernel,
@@ -15,14 +14,19 @@ export { uiActionsPlugin } from "./plugins/ui-actions";
 
 export const CLIENT_KERNEL_VERSION = 1;
 
-/** component-kit：GenUI 运行时入口，皮肤变体经 theme-bridge 解析（三引擎共用 catalog） */
+/**
+ * component-kit：GenUI 运行时入口，皮肤变体经 theme-bridge 解析（三引擎共用 catalog）。
+ * catalogPrompt 要拖 zod+schema 序列化（重依赖，T10 补记 size 削减）：客户端无
+ * 同步消费者，改按需动态引用，调用方 await 取串；服务端照旧用 catalog.ts 同步版。
+ */
 const componentKitPlugin = plugin(
   (ctx: KernelContext) => {
     const bridge = ctx.require<{ variant(): "stitch" | "clean" }>(
       "themeBridge",
     );
     ctx.provide("genui", {
-      catalogPrompt,
+      catalogPrompt: async (): Promise<string> =>
+        (await import("@/components/genui/catalog")).catalogPrompt(),
       variant: () => bridge.variant(),
     });
   },

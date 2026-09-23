@@ -2,7 +2,6 @@
 
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import { type ReactNode, useEffect } from "react";
-import { applyMotionDefaults } from "@/lib/motion/gsap";
 import { useThemeStore } from "@/stores/theme-store";
 import { getTheme } from "@/themes/registry";
 
@@ -25,11 +24,12 @@ function DomSync() {
   const resolved = useThemeStore((s) => s.resolved);
   const { resolvedTheme, setTheme: setNextTheme } = useTheme();
 
-  // store → DOM 属性 + GSAP 默认值（v2 废除 accentHue，色相钩子已从生成管线整体删除）
+  // store → DOM 属性（v2 废除 accentHue，色相钩子已从生成管线整体删除）。
+  // GSAP 默认值不再于此应用（T10 补记 size 削减）：gsap 已拆出首载，由各动态
+  // 消费入口（vt 驱动 / focusPull）在模块落地时应用当时主题的默认值；
+  // 全站 tween 均显式传 ease/duration，默认值不改变任何可观察动画。
   useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute("data-theme", resolved.meta.id);
-    applyMotionDefaults(resolved.motion);
+    document.documentElement.setAttribute("data-theme", resolved.meta.id);
   }, [resolved]);
 
   // next-themes（系统模式变化）→ store

@@ -88,9 +88,12 @@ test("lumen（intensity=0）点 Lab 不吃崩解语法，但转场本身仍在�
     graceMs: 1500,
     forbid: ["rift-t1", "rift-tear"],
   });
-  // 反测：不挂类得靠「真的有转场」兜底，否则「没语法」可以靠根本没 VT 蒙对
+  // 反测：不挂类得靠「真的有转场」兜底，否则「没语法」可以靠根本没 VT 蒙对。
+  // 窗口取 20s（6 worker 并跑实测 /zh/lab 提交可逼近 10s 级）：窗长只让反测更
+  // 严（rift-* 类被看到的机会更多），同时给 UA crossfade 一个被采样到的公平窗口；
+  // 属基础设施时序放宽，与文件头两处适配同源。
   const sampled = sampleVtWindow(page, ["rift-t1", "rift-t2", "rift-tear"], {
-    durationMs: 6_000,
+    durationMs: 20_000,
   });
   await labLink(page).click();
   await expect(page).toHaveURL(/\/zh\/lab$/, { timeout: 30_000 });

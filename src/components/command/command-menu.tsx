@@ -2,7 +2,7 @@
 
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { focusPull } from "@/lib/motion/focus";
 import { withThemeViewTransition } from "@/lib/motion/vt";
 import { useThemeStore } from "@/stores/theme-store";
@@ -20,10 +20,7 @@ function focusPullHost(root: HTMLElement | null): HTMLElement | null {
   return document.querySelector<HTMLElement>("[cmdk-overlay]");
 }
 
-export function CommandMenu({
-  lang,
-  labels,
-}: {
+export type CommandMenuProps = {
   lang: string;
   labels: {
     placeholder: string;
@@ -35,14 +32,20 @@ export function CommandMenu({
     about: string;
     lab: string;
   };
-}) {
+};
+
+/**
+ * ⌘K 面板本体（cmdk + radix 重依赖）：由 command-gate 懒挂载——键盘监听与
+ * 就绪探针在门控里，本组件只在 chunk 落地后负责渲染与 T3 拉焦。
+ * 可见性由门控保证：首按时若模块未到位，open 翻转后挂载即见（非丢失）。
+ */
+export function CommandMenu({ lang, labels }: CommandMenuProps) {
   const open = useUIShellStore((s) => s.commandOpen);
   const setOpen = useUIShellStore((s) => s.setCommandOpen);
   const setTheme = useThemeStore((s) => s.setTheme);
   const motion = useThemeStore((s) => s.resolved.motion);
   const router = useRouter();
 
-  const [ready, setReady] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // T3 镜头拉焦（spec §4：⌘K 是全站最贵的交互瞬间）：打开即失焦→扫描→锁焦。
@@ -72,20 +75,6 @@ export function CommandMenu({
     };
   }, [open, motion]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen(!useUIShellStore.getState().commandOpen);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    // 就绪探针：独立 chunk 的 hydrate 顺序不可预测（存在键盘监听注册前的按键窗口），
-    // 此标记与监听器注册同帧翻转——E2E 以此为准，不依赖全局 hydration 时机
-    setReady(true);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [setOpen]);
-
   /**
    * 不在此处再包一层 document.startViewTransition：Next 的 router.push 已把这次
    * 导航提交包进 React 的路由 VT（实测 ⌘K 跳转记到 1 次 startViewTransition({update,types})），
@@ -102,67 +91,64 @@ export function CommandMenu({
     "px-1 py-1 text-xs uppercase tracking-widest text-ink-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1";
 
   return (
-    <>
-      {ready ? <span data-command-ready hidden /> : null}
-      <Command.Dialog
-        ref={contentRef}
-        open={open}
-        onOpenChange={setOpen}
-        label={labels.placeholder}
-        overlayClassName="fixed inset-0 z-50 bg-black/40"
-        contentClassName="fixed left-1/2 top-[20vh] z-50 w-[min(92vw,34rem)] -translate-x-1/2 rounded-md border border-border bg-bg-elevated shadow-[var(--shadow-md)]"
-      >
-        <Command.Input
-          placeholder={labels.placeholder}
-          className="w-full border-b border-border bg-transparent px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-muted"
-        />
-        <Command.List className="max-h-80 overflow-y-auto p-2">
-          <Command.Empty className="px-3 py-6 text-center text-sm text-ink-muted">
-            {labels.empty}
-          </Command.Empty>
-          <Command.Group heading={labels.nav} className={groupClass}>
+    <Command.Dialog
+      ref={contentRef}
+      open={open}
+      onOpenChange={setOpen}
+      label={labels.placeholder}
+      overlayClassName="fixed inset-0 z-50 bg-black/40"
+      contentClassName="fixed left-1/2 top-[20vh] z-50 w-[min(92vw,34rem)] -translate-x-1/2 rounded-md border border-border bg-bg-elevated shadow-[var(--shadow-md)]"
+    >
+      <Command.Input
+        placeholder={labels.placeholder}
+        className="w-full border-b border-border bg-transparent px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-muted"
+      />
+      <Command.List className="max-h-80 overflow-y-auto p-2">
+        <Command.Empty className="px-3 py-6 text-center text-sm text-ink-muted">
+          {labels.empty}
+        </Command.Empty>
+        <Command.Group heading={labels.nav} className={groupClass}>
+          <Command.Item
+            onSelect={() => go(`/${lang}/posts`)}
+            className={itemClass}
+          >
+            {labels.posts}
+          </Command.Item>
+          <Command.Item
+            onSelect={() => go(`/${lang}/projects`)}
+            className={itemClass}
+          >
+            {labels.projects}
+          </Command.Item>
+          <Command.Item
+            onSelect={() => go(`/${lang}/about`)}
+            className={itemClass}
+          >
+            {labels.about}
+          </Command.Item>
+          <Command.Item
+            onSelect={() => go(`/${lang}/lab`)}
+            className={itemClass}
+          >
+            {labels.lab}
+          </Command.Item>
+        </Command.Group>
+        <Command.Group heading={labels.theme} className={groupClass}>
+          {themeList.map((t) => (
             <Command.Item
-              onSelect={() => go(`/${lang}/posts`)}
+              key={t.meta.id}
+              value={`theme ${t.meta.name} ${t.meta.nameEn}`}
+              onSelect={() => {
+                withThemeViewTransition(() => setTheme(t.meta.id));
+                setOpen(false);
+              }}
               className={itemClass}
             >
-              {labels.posts}
+              {t.meta.name} · {t.meta.nameEn}
             </Command.Item>
-            <Command.Item
-              onSelect={() => go(`/${lang}/projects`)}
-              className={itemClass}
-            >
-              {labels.projects}
-            </Command.Item>
-            <Command.Item
-              onSelect={() => go(`/${lang}/about`)}
-              className={itemClass}
-            >
-              {labels.about}
-            </Command.Item>
-            <Command.Item
-              onSelect={() => go(`/${lang}/lab`)}
-              className={itemClass}
-            >
-              {labels.lab}
-            </Command.Item>
-          </Command.Group>
-          <Command.Group heading={labels.theme} className={groupClass}>
-            {themeList.map((t) => (
-              <Command.Item
-                key={t.meta.id}
-                value={`theme ${t.meta.name} ${t.meta.nameEn}`}
-                onSelect={() => {
-                  withThemeViewTransition(() => setTheme(t.meta.id));
-                  setOpen(false);
-                }}
-                className={itemClass}
-              >
-                {t.meta.name} · {t.meta.nameEn}
-              </Command.Item>
-            ))}
-          </Command.Group>
-        </Command.List>
-      </Command.Dialog>
-    </>
+          ))}
+        </Command.Group>
+      </Command.List>
+    </Command.Dialog>
   );
 }

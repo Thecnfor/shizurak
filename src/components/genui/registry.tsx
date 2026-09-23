@@ -4,7 +4,8 @@ import type {
   ComponentRegistry,
   ComponentRenderProps,
 } from "@json-render/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ensureClientKernel } from "@/lib/kernel/client-boot";
 import type { ActionsService } from "@/lib/kernel/plugins/ui-actions";
 import { useKernelService } from "@/lib/kernel/react";
 import { cn } from "@/lib/utils";
@@ -155,6 +156,11 @@ function ActionButton({ element }: RCP) {
   const { skin } = useGenUiSkin();
   const actions = useKernelService<ActionsService>("actions");
   const [error, setError] = useState<string | null>(null);
+  // 内核已改懒载（T10 补记）：消费 ui-actions 的组件挂载即消费信号，
+  // 触发启动（幂等）；就绪前按钮维持既有禁用容错
+  useEffect(() => {
+    void ensureClientKernel().catch(() => {});
+  }, []);
   return (
     <div>
       <button
